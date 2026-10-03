@@ -22,8 +22,8 @@ set +a
 : "${DEPLOYER_PRIVATE_KEY:?set DEPLOYER_PRIVATE_KEY in packages/foundry/.env}"
 export FOUNDRY_DISABLE_NIGHTLY_WARNING=1
 
-RPC=${HEDERA_RPC_URL:-https://testnet.hashio.io/api}
-MIRROR=https://testnet.mirrornode.hedera.com/api/v1
+RPC=${FURNACE_RPC_URL:-${HEDERA_RPC_URL:-https://testnet.hashio.io/api}}
+MIRROR=${MIRROR_URL:-https://testnet.mirrornode.hedera.com/api/v1}
 TOKEN_SUPPLY=${TOKEN_SUPPLY:-1000000}
 DECIMALS=${DECIMALS:-8}
 LIQUIDITY_PCT=${LIQUIDITY_PCT:-40}
