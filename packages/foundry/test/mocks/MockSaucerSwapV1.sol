@@ -108,10 +108,16 @@ contract MockV1Router {
     uint256 public haircutBps;
     uint256 public lastSwapValue;
     uint256 public swapCount;
+    /// When set the swap takes the HBAR and delivers nothing, to play a router that ignores minimum output.
+    bool public stingy;
 
     constructor(MockV1Factory factory_, address whbar_) {
         factory = factory_;
         whbar = whbar_;
+    }
+
+    function setStingy(bool value) external {
+        stingy = value;
     }
 
     function setHaircutBps(uint256 value) external {
@@ -179,6 +185,10 @@ contract MockV1Router {
         require(block.timestamp <= deadline, "EXPIRED");
         amounts = getAmountsOut(msg.value, path);
         amounts[1] = amounts[1] * (BPS - haircutBps) / BPS;
+        if (stingy) {
+            ++swapCount;
+            return amounts;
+        }
         require(amounts[1] >= amountOutMin, "INSUFFICIENT_OUTPUT_AMOUNT");
         MockV1Pair pair = MockV1Pair(factory.getPair(path[0], path[1]));
         (uint256 rHbar, uint256 rToken) = _reserves(pair, path[1]);
