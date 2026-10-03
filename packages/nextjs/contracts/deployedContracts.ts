@@ -6,8 +6,8 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-hbar/contract";
 
 const deployedContracts = {
   296: {
-    BasketVault: {
-      address: "0x1af34177be9371490e96ce5420c71d8d95c97eab",
+    FurnaceEngine: {
+      address: "0x706947ecc0411badef790282bb89b80126357d9d",
       abi: [
         {
           type: "constructor",
@@ -15,20 +15,10 @@ const deployedContracts = {
             {
               name: "config",
               type: "tuple",
-              internalType: "struct BasketVault.Config",
+              internalType: "struct FurnaceEngine.Config",
               components: [
                 {
                   name: "router",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "whbarHelper",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "whbar",
                   type: "address",
                   internalType: "address",
                 },
@@ -43,12 +33,12 @@ const deployedContracts = {
                   internalType: "uint256",
                 },
                 {
-                  name: "driftBps",
+                  name: "fuelReserve",
                   type: "uint256",
                   internalType: "uint256",
                 },
                 {
-                  name: "slippageBps",
+                  name: "minSpend",
                   type: "uint256",
                   internalType: "uint256",
                 },
@@ -58,36 +48,24 @@ const deployedContracts = {
                   internalType: "uint256",
                 },
                 {
-                  name: "guardLeg",
+                  name: "dailyBudgetUsd",
                   type: "uint256",
                   internalType: "uint256",
                 },
                 {
-                  name: "maxDeviationBps",
+                  name: "maxImpactBps",
                   type: "uint256",
                   internalType: "uint256",
                 },
-              ],
-            },
-            {
-              name: "legConfigs",
-              type: "tuple[]",
-              internalType: "struct BasketVault.LegConfig[]",
-              components: [
                 {
-                  name: "token",
-                  type: "address",
-                  internalType: "address",
+                  name: "priceCeilingUsd",
+                  type: "uint256",
+                  internalType: "uint256",
                 },
                 {
-                  name: "pool",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "weightBps",
-                  type: "uint16",
-                  internalType: "uint16",
+                  name: "slippageBps",
+                  type: "uint256",
+                  internalType: "uint256",
                 },
               ],
             },
@@ -100,7 +78,7 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "DEAD_SHARES",
+          name: "MAX_IMPACT_BPS",
           inputs: [],
           outputs: [
             {
@@ -114,6 +92,19 @@ const deployedContracts = {
         {
           type: "function",
           name: "MAX_INTERVAL",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "MAX_SLIPPAGE_BPS",
           inputs: [],
           outputs: [
             {
@@ -152,26 +143,40 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "deposit",
-          inputs: [
-            {
-              name: "minShares",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
+          name: "buyback",
+          inputs: [],
           outputs: [
             {
-              name: "shares",
+              name: "tokensBurned",
               type: "uint256",
               internalType: "uint256",
             },
           ],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "claimTeamAllocation",
+          inputs: [
+            {
+              name: "to",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "createPool",
+          inputs: [],
+          outputs: [],
           stateMutability: "payable",
         },
         {
           type: "function",
-          name: "driftBps",
+          name: "dailyBudgetUsd",
           inputs: [],
           outputs: [
             {
@@ -184,7 +189,20 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "guardLeg",
+          name: "factory",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract ISaucerSwapV1Factory",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "fuelReserve",
           inputs: [],
           outputs: [
             {
@@ -223,41 +241,6 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "holdings",
-          inputs: [],
-          outputs: [
-            {
-              name: "rows",
-              type: "tuple[]",
-              internalType: "struct BasketVault.Holding[]",
-              components: [
-                {
-                  name: "token",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "balance",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "valueWhbar",
-                  type: "uint256",
-                  internalType: "uint256",
-                },
-                {
-                  name: "targetBps",
-                  type: "uint16",
-                  internalType: "uint16",
-                },
-              ],
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
           name: "initialize",
           inputs: [
             {
@@ -270,53 +253,54 @@ const deployedContracts = {
               type: "string",
               internalType: "string",
             },
+            {
+              name: "totalSupply",
+              type: "uint64",
+              internalType: "uint64",
+            },
+            {
+              name: "decimals",
+              type: "uint8",
+              internalType: "uint8",
+            },
+            {
+              name: "liquidityAllocation",
+              type: "uint64",
+              internalType: "uint64",
+            },
           ],
           outputs: [],
           stateMutability: "payable",
         },
         {
           type: "function",
-          name: "legs",
+          name: "liquidityUnseeded",
           inputs: [],
           outputs: [
             {
               name: "",
-              type: "tuple[]",
-              internalType: "struct BasketVault.Leg[]",
-              components: [
-                {
-                  name: "token",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "pool",
-                  type: "address",
-                  internalType: "address",
-                },
-                {
-                  name: "fee",
-                  type: "uint24",
-                  internalType: "uint24",
-                },
-                {
-                  name: "tokenIsToken0",
-                  type: "bool",
-                  internalType: "bool",
-                },
-                {
-                  name: "weightBps",
-                  type: "uint16",
-                  internalType: "uint16",
-                },
-              ],
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           stateMutability: "view",
         },
         {
           type: "function",
-          name: "maxDeviationBps",
+          name: "lpToken",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "maxImpactBps",
           inputs: [],
           outputs: [
             {
@@ -342,20 +326,7 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "nav",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "navUsd",
+          name: "minSpend",
           inputs: [],
           outputs: [
             {
@@ -394,6 +365,19 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "pair",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "pendingSchedule",
           inputs: [],
           outputs: [
@@ -407,20 +391,7 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "rebalance",
-          inputs: [],
-          outputs: [
-            {
-              name: "traded",
-              type: "bool",
-              internalType: "bool",
-            },
-          ],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "rebalanceInterval",
+          name: "poolCreationFee",
           inputs: [],
           outputs: [
             {
@@ -433,27 +404,34 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "redeem",
-          inputs: [
-            {
-              name: "shares",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
+          name: "previewBuyback",
+          inputs: [],
           outputs: [
             {
-              name: "whbarOut",
+              name: "skip",
+              type: "uint8",
+              internalType: "enum FurnaceEngine.Skip",
+            },
+            {
+              name: "spend",
               type: "uint256",
               internalType: "uint256",
             },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "priceCeilingUsd",
+          inputs: [],
+          outputs: [
             {
-              name: "legAmounts",
-              type: "uint256[]",
-              internalType: "uint256[]",
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
-          stateMutability: "nonpayable",
+          stateMutability: "view",
         },
         {
           type: "function",
@@ -470,7 +448,20 @@ const deployedContracts = {
             {
               name: "",
               type: "address",
-              internalType: "contract ISaucerSwapV2Router",
+              internalType: "contract ISaucerSwapV1Router",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "runInterval",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           stateMutability: "view",
@@ -497,7 +488,77 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "sharePriceUsd",
+          name: "seedLiquidity",
+          inputs: [
+            {
+              name: "minToken",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "minHbar",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "payable",
+        },
+        {
+          type: "function",
+          name: "setDailyBudgetUsd",
+          inputs: [
+            {
+              name: "value",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "setMaxImpactBps",
+          inputs: [
+            {
+              name: "value",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "setPriceCeilingUsd",
+          inputs: [
+            {
+              name: "value",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "setSlippageBps",
+          inputs: [
+            {
+              name: "value",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "slippageBps",
           inputs: [],
           outputs: [
             {
@@ -510,20 +571,7 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "shareToken",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "slippageBps",
+          name: "spentTodayUsd",
           inputs: [],
           outputs: [
             {
@@ -549,10 +597,190 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "status",
+          inputs: [],
+          outputs: [
+            {
+              name: "s",
+              type: "tuple",
+              internalType: "struct FurnaceEngine.Status",
+              components: [
+                {
+                  name: "token",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "pair",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "lpToken",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "totalSupply",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "totalBurned",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "totalSpentHbar",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "spentTodayUsd",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "budgetLeftUsd",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "priceHbar",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "priceUsd",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "hbarUsd",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "reserveHbar",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "reserveToken",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "teamUnclaimed",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "liquidityUnseeded",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "balance",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "fuel",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "nextRunAt",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "pendingSchedule",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "interval",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "stopAutomation",
           inputs: [],
           outputs: [],
           stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "teamUnclaimed",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "token",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "tokenDecimals",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint8",
+              internalType: "uint8",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "totalBurned",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "totalSpentHbar",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
         },
         {
           type: "function",
@@ -582,47 +810,16 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "whbarHelper",
+          name: "windowStart",
           inputs: [],
           outputs: [
             {
               name: "",
-              type: "address",
-              internalType: "contract IWhbarHelper",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "whbarWeightBps",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "uint16",
-              internalType: "uint16",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "withdrawFuel",
-          inputs: [
-            {
-              name: "to",
-              type: "address",
-              internalType: "address payable",
-            },
-            {
-              name: "amount",
               type: "uint256",
               internalType: "uint256",
             },
           ],
-          outputs: [],
-          stateMutability: "nonpayable",
+          stateMutability: "view",
         },
         {
           type: "event",
@@ -658,14 +855,8 @@ const deployedContracts = {
         },
         {
           type: "event",
-          name: "Deposited",
+          name: "Burned",
           inputs: [
-            {
-              name: "account",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
             {
               name: "hbarIn",
               type: "uint256",
@@ -673,13 +864,51 @@ const deployedContracts = {
               internalType: "uint256",
             },
             {
-              name: "valueAdded",
+              name: "tokensBurned",
               type: "uint256",
               indexed: false,
               internalType: "uint256",
             },
             {
-              name: "shares",
+              name: "priceHbar",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "priceUsd",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "supplyAfter",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
+          name: "BuybackSkipped",
+          inputs: [
+            {
+              name: "reason",
+              type: "uint8",
+              indexed: false,
+              internalType: "enum FurnaceEngine.Skip",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
+          name: "DailyBudgetSet",
+          inputs: [
+            {
+              name: "dailyBudgetUsd",
               type: "uint256",
               indexed: false,
               internalType: "uint256",
@@ -692,10 +921,60 @@ const deployedContracts = {
           name: "Initialized",
           inputs: [
             {
-              name: "shareToken",
+              name: "token",
               type: "address",
               indexed: true,
               internalType: "address",
+            },
+            {
+              name: "totalSupply",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "liquidityAllocation",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
+          name: "LiquiditySeeded",
+          inputs: [
+            {
+              name: "tokenAmount",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "hbarAmount",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "lpMinted",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
+          name: "MaxImpactSet",
+          inputs: [
+            {
+              name: "maxImpactBps",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
             },
           ],
           anonymous: false,
@@ -721,56 +1000,57 @@ const deployedContracts = {
         },
         {
           type: "event",
-          name: "Rebalanced",
+          name: "PoolCreated",
           inputs: [
             {
-              name: "navBefore",
+              name: "pair",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "lpToken",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "feeTinybar",
               type: "uint256",
               indexed: false,
               internalType: "uint256",
-            },
-            {
-              name: "navAfter",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-            {
-              name: "traded",
-              type: "bool",
-              indexed: false,
-              internalType: "bool",
             },
           ],
           anonymous: false,
         },
         {
           type: "event",
-          name: "Redeemed",
+          name: "PriceCeilingSet",
           inputs: [
             {
-              name: "account",
+              name: "priceCeilingUsd",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
+          name: "RevenueReceived",
+          inputs: [
+            {
+              name: "from",
               type: "address",
               indexed: true,
               internalType: "address",
             },
             {
-              name: "shares",
+              name: "amount",
               type: "uint256",
               indexed: false,
               internalType: "uint256",
-            },
-            {
-              name: "whbarOut",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-            {
-              name: "legAmounts",
-              type: "uint256[]",
-              indexed: false,
-              internalType: "uint256[]",
             },
           ],
           anonymous: false,
@@ -799,10 +1079,10 @@ const deployedContracts = {
           name: "ScheduledRun",
           inputs: [
             {
-              name: "traded",
-              type: "bool",
+              name: "tokensBurned",
+              type: "uint256",
               indexed: false,
-              internalType: "bool",
+              internalType: "uint256",
             },
           ],
           anonymous: false,
@@ -822,28 +1102,29 @@ const deployedContracts = {
         },
         {
           type: "event",
-          name: "Swapped",
+          name: "SlippageSet",
           inputs: [
             {
-              name: "tokenIn",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-            {
-              name: "tokenOut",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-            {
-              name: "amountIn",
+              name: "slippageBps",
               type: "uint256",
               indexed: false,
               internalType: "uint256",
             },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
+          name: "TeamAllocationClaimed",
+          inputs: [
             {
-              name: "amountOut",
+              name: "to",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "amount",
               type: "uint256",
               indexed: false,
               internalType: "uint256",
@@ -853,7 +1134,17 @@ const deployedContracts = {
         },
         {
           type: "error",
+          name: "AllocationBreach",
+          inputs: [],
+        },
+        {
+          type: "error",
           name: "AlreadyInitialized",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "AlreadySeeded",
           inputs: [],
         },
         {
@@ -901,15 +1192,15 @@ const deployedContracts = {
         },
         {
           type: "error",
-          name: "InsufficientShares",
+          name: "InsufficientFee",
           inputs: [
             {
-              name: "shares",
+              name: "required",
               type: "uint256",
               internalType: "uint256",
             },
             {
-              name: "minShares",
+              name: "sent",
               type: "uint256",
               internalType: "uint256",
             },
@@ -918,6 +1209,16 @@ const deployedContracts = {
         {
           type: "error",
           name: "NotInitialized",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "NotOwnerOrSelf",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "NothingBought",
           inputs: [],
         },
         {
@@ -949,19 +1250,13 @@ const deployedContracts = {
         },
         {
           type: "error",
-          name: "PoolPriceDeviates",
-          inputs: [
-            {
-              name: "poolHbarUsd",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "oracleHbarUsd",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
+          name: "PoolExists",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "PoolMissing",
+          inputs: [],
         },
         {
           type: "error",
@@ -977,6 +1272,17 @@ const deployedContracts = {
               type: "uint8",
               internalType: "uint8",
             },
+            {
+              name: "value",
+              type: "int256",
+              internalType: "int256",
+            },
+          ],
+        },
+        {
+          type: "error",
+          name: "SafeCastOverflowedIntToUint",
+          inputs: [
             {
               name: "value",
               type: "int256",
@@ -1030,12 +1336,17 @@ const deployedContracts = {
         },
         {
           type: "error",
+          name: "ZeroAddress",
+          inputs: [],
+        },
+        {
+          type: "error",
           name: "ZeroAmount",
           inputs: [],
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 41293014,
+      deployedOnBlock: 41299172,
     },
   },
 } as const;
