@@ -4,20 +4,28 @@ pragma solidity ^0.8.28;
 import { MockHtsToken } from "./MockHtsToken.sol";
 import { IHederaTokenService } from "../../contracts/interfaces/IHederaTokenService.sol";
 
-/// @notice The share token the HTS mock creates: an HTS facade whose treasury is associated from birth and whose
-/// supply only the HTS mock can change, by minting to and burning from the treasury.
+/// @notice The token the HTS mock creates: an HTS facade whose treasury is associated from birth, holds the initial
+/// supply, and whose supply only the HTS mock can change, by minting to and burning from the treasury. Like a
+/// finite-supply HTS token it refuses an allowance above its max supply.
 contract MockShareToken is MockHtsToken {
     address public immutable hts;
     address public immutable treasury;
 
     error OnlyHts();
 
-    constructor(string memory name_, string memory symbol_, uint8 decimals_, address treasury_)
-        MockHtsToken(name_, symbol_, decimals_)
-    {
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        uint8 decimals_,
+        address treasury_,
+        uint256 initialSupply_,
+        uint256 maxSupply_
+    ) MockHtsToken(name_, symbol_, decimals_) {
         hts = msg.sender;
         treasury = treasury_;
         associated[treasury_] = true;
+        maxSupply = maxSupply_;
+        if (initialSupply_ != 0) _mint(treasury_, initialSupply_);
     }
 
     function htsMint(uint256 amount) external {
@@ -45,6 +53,8 @@ contract MockHts {
     int64 public forcedCreateCode;
     int64 public forcedMintCode;
     int64 public forcedBurnCode;
+    /// Tokens the mock burns beyond what a call asks for, to play an HTS that burns too much.
+    uint256 public burnExtra;
     /// HBAR the creation keeps; the rest of msg.value goes back to the caller.
     uint256 public createFee;
 
@@ -59,12 +69,18 @@ contract MockHts {
     int64 public lastAutoRenewPeriod;
     bool public lastFiniteSupply;
     int64 public lastInitialSupply;
+    int64 public lastMaxSupply;
+    address public lastTreasury;
     mapping(address token => address) public supplyKeyHolder;
 
     function setForcedCodes(int64 create, int64 mint, int64 burn) external {
         forcedCreateCode = create;
         forcedMintCode = mint;
         forcedBurnCode = burn;
+    }
+
+    function setBurnExtra(uint256 extra) external {
+        burnExtra = extra;
     }
 
     function setCreateFee(uint256 fee) external {
@@ -78,8 +94,12 @@ contract MockHts {
     {
         if (forcedCreateCode != 0) return (forcedCreateCode, address(0));
         if (msg.value < createFee) return (INSUFFICIENT_TX_FEE, address(0));
-        // forge-lint: disable-next-line(unsafe-typecast)
-        MockShareToken created = new MockShareToken(token.name, token.symbol, uint8(uint32(decimals)), token.treasury);
+        // forge-lint: disable-start(unsafe-typecast)
+        uint8 dec = uint8(uint32(decimals));
+        uint256 initial = uint256(uint64(initialTotalSupply));
+        uint256 cap = token.tokenSupplyType ? uint256(uint64(token.maxSupply)) : 0;
+        // forge-lint: disable-end(unsafe-typecast)
+        MockShareToken created = new MockShareToken(token.name, token.symbol, dec, token.treasury, initial, cap);
         tokenAddress = address(created);
         for (uint256 i; i < token.tokenKeys.length; ++i) {
             if (token.tokenKeys[i].keyType & SUPPLY_KEY != 0) {
@@ -92,6 +112,8 @@ contract MockHts {
         lastAutoRenewPeriod = token.expiry.autoRenewPeriod;
         lastFiniteSupply = token.tokenSupplyType;
         lastInitialSupply = initialTotalSupply;
+        lastMaxSupply = token.maxSupply;
+        lastTreasury = token.treasury;
         lastCreated = tokenAddress;
         lastCreateValue = msg.value;
         ++createCount;
@@ -125,8 +147,8 @@ contract MockHts {
         MockShareToken share = MockShareToken(token);
         // forge-lint: disable-next-line(unsafe-typecast)
         uint256 value = uint256(uint64(amount));
-        if (share.balanceOf(share.treasury()) < value) return (INSUFFICIENT_TOKEN_BALANCE, 0);
-        share.htsBurn(value);
+        if (share.balanceOf(share.treasury()) < value + burnExtra) return (INSUFFICIENT_TOKEN_BALANCE, 0);
+        share.htsBurn(value + burnExtra);
         ++burnCount;
         // forge-lint: disable-next-line(unsafe-typecast)
         return (SUCCESS, int64(int256(share.totalSupply())));

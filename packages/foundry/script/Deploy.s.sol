@@ -2,40 +2,36 @@
 pragma solidity ^0.8.28;
 
 import { ScaffoldETHDeploy } from "./DeployHelpers.s.sol";
-import { BasketVault } from "../contracts/BasketVault.sol";
+import { FurnaceEngine } from "../contracts/FurnaceEngine.sol";
 
-/// @notice Deploys a BasketVault for a 40% HBAR / 30% SAUCE / 30% USDC basket.
-/// @dev Addresses are SaucerSwap V2 and Chainlink on Hedera testnet; swap them for mainnet.
-/// DRIFT_BPS (env, default 500) sets how far a leg may drift from its weight before a rebalance trades.
+/// @notice Deploys a FurnaceEngine wired to SaucerSwap V1 and the Chainlink HBAR/USD feed on Hedera testnet.
+/// @dev Addresses are Hedera testnet; swap them for mainnet. Policy comes from the environment, with these defaults:
+///   DAILY_BUDGET_USD   USD the engine may spend per 24h, 8 decimals     (default 1e8, $1.00)
+///   MAX_IMPACT_BPS     price impact one buyback may cause, <= 1000      (default 500, 5%)
+///   PRICE_CEILING_USD  USD per whole token, 8 decimals, 0 for none      (default 0)
+///   SLIPPAGE_BPS       tolerance below the router quote, <= 1000        (default 300)
+///   FUEL_RESERVE_HBAR  whole HBAR that buybacks never touch             (default 25)
+///   MIN_SPEND_HBAR_E8  smallest buyback in tinybar                      (default 1e8, 1 HBAR)
 contract DeployScript is ScaffoldETHDeploy {
-    function run() external ScaffoldEthDeployerRunner {
-        BasketVault.LegConfig[] memory legs = new BasketVault.LegConfig[](2);
-        legs[0] = BasketVault.LegConfig({
-            token: 0x0000000000000000000000000000000000120f46, // SAUCE 0.0.1183558
-            pool: 0x37814eDc1ae88cf27c0C346648721FB04e7E0AE7, // WHBAR/SAUCE 0.30%
-            weightBps: 3000
-        });
-        legs[1] = BasketVault.LegConfig({
-            token: 0x0000000000000000000000000000000000001549, // USDC 0.0.5449
-            pool: 0x914B98992d7eD602D1f5d9084ECe8160Fc0e741a, // WHBAR/USDC 0.30%
-            weightBps: 3000
-        });
+    error UnsupportedChain(uint256 chainId);
 
-        BasketVault vault = new BasketVault(
-            BasketVault.Config({
-                router: 0x0000000000000000000000000000000000159398, // SwapRouter 0.0.1414040
-                whbarHelper: 0x000000000000000000000000000000000050a8a7, // WhbarHelper 0.0.5286055
-                whbar: 0x0000000000000000000000000000000000003aD2, // WHBAR 0.0.15058
-                hbarUsdFeed: 0x59bC155EB6c6C415fE43255aF66EcF0523c92B4a, // Chainlink HBAR/USD
+    function run() external ScaffoldEthDeployerRunner {
+        if (block.chainid != 296) revert UnsupportedChain(block.chainid);
+
+        FurnaceEngine engine = new FurnaceEngine(
+            FurnaceEngine.Config({
+                router: 0x0000000000000000000000000000000000004b40, // SaucerSwap V1 RouterV3 0.0.19264
+                hbarUsdFeed: 0x59bC155EB6c6C415fE43255aF66EcF0523c92B4a, // Chainlink HBAR/USD, 8 decimals
                 maxOracleAge: 1 days + 1 hours,
-                driftBps: vm.envOr("DRIFT_BPS", uint256(500)),
-                slippageBps: 300,
+                fuelReserve: vm.envOr("FUEL_RESERVE_HBAR", uint256(25)) * 1e8,
+                minSpend: vm.envOr("MIN_SPEND_HBAR_E8", uint256(1e8)),
                 scheduledGas: 4_000_000,
-                guardLeg: type(uint256).max,
-                maxDeviationBps: 0
-            }),
-            legs
+                dailyBudgetUsd: vm.envOr("DAILY_BUDGET_USD", uint256(1e8)),
+                maxImpactBps: vm.envOr("MAX_IMPACT_BPS", uint256(500)),
+                priceCeilingUsd: vm.envOr("PRICE_CEILING_USD", uint256(0)),
+                slippageBps: vm.envOr("SLIPPAGE_BPS", uint256(300))
+            })
         );
-        deployments.push(Deployment({ name: "BasketVault", addr: address(vault) }));
+        deployments.push(Deployment({ name: "FurnaceEngine", addr: address(engine) }));
     }
 }
