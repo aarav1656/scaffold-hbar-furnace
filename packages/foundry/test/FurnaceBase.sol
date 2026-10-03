@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+// forge-lint: disable-start(unsafe-typecast)
+
 import { Test, Vm } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -8,7 +10,11 @@ import { FurnaceEngine } from "../contracts/FurnaceEngine.sol";
 import { MockHtsToken } from "./mocks/MockHtsToken.sol";
 import { MockShareToken, MockHts, MockHss } from "./mocks/MockHederaSystem.sol";
 import {
-    MockExchangeRate, MockV1Factory, MockV1Router, MockV1Pair, MockAggregator
+    MockExchangeRate,
+    MockV1Factory,
+    MockV1Router,
+    MockV1Pair,
+    MockAggregator
 } from "./mocks/MockSaucerSwapV1.sol";
 
 /// Fixture for every FurnaceEngine test: Hedera system contracts etched at 0x167, 0x168 and 0x16b, a SaucerSwap V1
@@ -112,7 +118,9 @@ abstract contract FurnaceBase is Test {
     function _initialize() internal {
         vm.deal(owner, INIT_VALUE);
         vm.prank(owner);
-        engine.initialize{ value: INIT_VALUE }("Furnace Demo", "FURN", uint64(TOTAL_SUPPLY), DECIMALS, uint64(LIQUIDITY));
+        engine.initialize{ value: INIT_VALUE }(
+            "Furnace Demo", "FURN", uint64(TOTAL_SUPPLY), DECIMALS, uint64(LIQUIDITY)
+        );
         furn = MockShareToken(engine.token());
     }
 

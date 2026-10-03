@@ -3,6 +3,8 @@
 // association behaviour follows what SaucerSwap V1 does on Hedera testnet, measured in research/furnace-spike.md.
 pragma solidity ^0.8.28;
 
+// forge-lint: disable-start(unsafe-typecast)
+
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
@@ -57,6 +59,7 @@ contract MockV1Pair {
 
     function payout(address token, address to, uint256 amount) external {
         if (msg.sender != router) revert OnlyRouter();
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         IERC20(token).transfer(to, amount);
     }
 
@@ -132,6 +135,7 @@ contract MockV1Router {
         address to,
         uint256 deadline
     ) external payable returns (uint256 amountToken, uint256 amountETH, uint256 liquidity) {
+        // forge-lint: disable-next-line(block-timestamp)
         require(block.timestamp <= deadline, "EXPIRED");
         MockV1Pair pair = MockV1Pair(factory.getPair(token, whbar));
         require(address(pair) != address(0), "NO_PAIR");
@@ -182,6 +186,7 @@ contract MockV1Router {
         payable
         returns (uint256[] memory amounts)
     {
+        // forge-lint: disable-next-line(block-timestamp)
         require(block.timestamp <= deadline, "EXPIRED");
         amounts = getAmountsOut(msg.value, path);
         amounts[1] = amounts[1] * (BPS - haircutBps) / BPS;

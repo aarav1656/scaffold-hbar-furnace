@@ -156,13 +156,7 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
     event LiquiditySeeded(uint256 tokenAmount, uint256 hbarAmount, uint256 lpMinted);
     event TeamAllocationClaimed(address indexed to, uint256 amount);
     event RevenueReceived(address indexed from, uint256 amount);
-    event Burned(
-        uint256 hbarIn,
-        uint256 tokensBurned,
-        uint256 priceHbar,
-        uint256 priceUsd,
-        uint256 supplyAfter
-    );
+    event Burned(uint256 hbarIn, uint256 tokensBurned, uint256 priceHbar, uint256 priceUsd, uint256 supplyAfter);
     event BuybackSkipped(Skip reason);
     event DailyBudgetSet(uint256 dailyBudgetUsd);
     event MaxImpactSet(uint256 maxImpactBps);
@@ -371,6 +365,7 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
         uint256 spend = plan.spend;
 
         // Effects first. The USD cost rounds up, so rounding can never let a day's spend pass the budget.
+        // forge-lint: disable-next-line(block-timestamp)
         if (block.timestamp >= windowStart + BUDGET_WINDOW) {
             windowStart = block.timestamp;
             spentTodayUsd = 0;
@@ -457,6 +452,7 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
     function hbarUsd() public view returns (uint256) {
         (, int256 answer,, uint256 updatedAt,) = hbarUsdFeed.latestRoundData();
         if (answer <= 0) revert BadOraclePrice(answer);
+        // forge-lint: disable-next-line(block-timestamp)
         if (block.timestamp > updatedAt + maxOracleAge) revert StaleOracle(updatedAt);
         return SafeCast.toUint256(answer);
     }
@@ -548,6 +544,7 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
     }
 
     function _spentToday() private view returns (uint256) {
+        // forge-lint: disable-next-line(block-timestamp)
         return block.timestamp >= windowStart + BUDGET_WINDOW ? 0 : spentTodayUsd;
     }
 
@@ -582,8 +579,7 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
 
     function _checkPolicy(uint256 impactBps, uint256 ceilingUsd, uint256 slippage) private pure {
         if (
-            impactBps == 0 || impactBps > MAX_IMPACT_BPS || slippage > MAX_SLIPPAGE_BPS
-                || ceilingUsd > type(uint64).max
+            impactBps == 0 || impactBps > MAX_IMPACT_BPS || slippage > MAX_SLIPPAGE_BPS || ceilingUsd > type(uint64).max
         ) revert BadConfig();
     }
 

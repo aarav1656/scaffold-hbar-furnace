@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+// forge-lint: disable-start(unsafe-typecast)
+
 import { Vm } from "forge-std/Test.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 

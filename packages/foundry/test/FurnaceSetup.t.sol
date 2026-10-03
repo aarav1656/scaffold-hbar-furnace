@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+// forge-lint: disable-start(unsafe-typecast)
+
 import { Vm } from "forge-std/Test.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -126,7 +128,9 @@ contract FurnaceSetupTest is FurnaceBase {
         vm.expectEmit(false, false, false, true, address(engine));
         emit FurnaceEngine.Initialized(address(0), TOTAL_SUPPLY, LIQUIDITY);
         vm.prank(owner);
-        engine.initialize{ value: INIT_VALUE }("Furnace Demo", "FURN", uint64(TOTAL_SUPPLY), DECIMALS, uint64(LIQUIDITY));
+        engine.initialize{ value: INIT_VALUE }(
+            "Furnace Demo", "FURN", uint64(TOTAL_SUPPLY), DECIMALS, uint64(LIQUIDITY)
+        );
     }
 
     function test_initialize_allowsAllSupplyToTheLiquidityPool() public {
@@ -141,7 +145,9 @@ contract FurnaceSetupTest is FurnaceBase {
         vm.deal(alice, INIT_VALUE);
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice));
-        engine.initialize{ value: INIT_VALUE }("Furnace Demo", "FURN", uint64(TOTAL_SUPPLY), DECIMALS, uint64(LIQUIDITY));
+        engine.initialize{ value: INIT_VALUE }(
+            "Furnace Demo", "FURN", uint64(TOTAL_SUPPLY), DECIMALS, uint64(LIQUIDITY)
+        );
         assertEq(engine.token(), address(0));
         assertEq(hts.createCount(), 0);
     }
@@ -184,7 +190,9 @@ contract FurnaceSetupTest is FurnaceBase {
         vm.deal(owner, INIT_VALUE);
         vm.prank(owner);
         vm.expectRevert(abi.encodeWithSelector(FurnaceEngine.HtsCallFailed.selector, int64(177)));
-        engine.initialize{ value: INIT_VALUE }("Furnace Demo", "FURN", uint64(TOTAL_SUPPLY), DECIMALS, uint64(LIQUIDITY));
+        engine.initialize{ value: INIT_VALUE }(
+            "Furnace Demo", "FURN", uint64(TOTAL_SUPPLY), DECIMALS, uint64(LIQUIDITY)
+        );
         assertEq(engine.token(), address(0));
         assertEq(engine.teamUnclaimed(), 0);
     }
@@ -531,7 +539,10 @@ contract FurnaceSetupTest is FurnaceBase {
     function test_stateChangingSurface_isExactlyTheReviewedList() public view {
         string memory abiJson = vm.readFile("out/FurnaceEngine.sol/FurnaceEngine.json");
         string[] memory names = abi.decode(
-            vm.parseJson(abiJson, '$.abi[?(@.type=="function" && @.stateMutability!="view" && @.stateMutability!="pure")].name'), (string[])
+            vm.parseJson(
+                abiJson, '$.abi[?(@.type=="function" && @.stateMutability!="view" && @.stateMutability!="pure")].name'
+            ),
+            (string[])
         );
         string[14] memory expected = [
             "buyback",
