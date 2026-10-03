@@ -38,7 +38,7 @@ cd "$WORK"
 npx -y create-scaffold-hbar@latest app --template "$TEMPLATE" \
   -f nextjs-app -s foundry --network testnet --package-manager "$PM" --skip-hedera-skills --ci
 cd app
-for f in README.md AGENTS.md LICENCE packages/foundry/contracts/BasketVault.sol packages/nextjs/app/page.tsx; do
+for f in README.md AGENTS.md LICENCE packages/foundry/contracts/FurnaceEngine.sol packages/foundry/script/live-testnet.sh packages/foundry/script/Deploy.s.sol packages/nextjs/app/page.tsx; do
   test -f "$f" || { echo "FAIL: missing $f"; exit 1; }
 done
 

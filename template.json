@@ -1,6 +1,6 @@
 {
-  "name": "index-basket",
-  "description": "Tokenised index fund on Hedera: one HBAR deposit buys a weighted basket on SaucerSwap V2, mints an HTS share token, redeems in kind, and rebalances itself through the Hedera Schedule Service with Chainlink USD pricing.",
+  "name": "furnace",
+  "description": "Buyback-and-burn engine on Hedera: a token team points HBAR revenue at FurnaceEngine, which creates the HTS token, locks its SaucerSwap V1 liquidity, and on its own Hedera Schedule Service schedule buys the token back inside a Chainlink-priced USD budget, a price ceiling and a price-impact cap, then burns it with the HTS supply key it holds.",
   "version": "1.0.0",
   "create-scaffold-hbar": {
     "capabilities": {
@@ -21,7 +21,7 @@
         {
           "steps": [
             {
-              "text": "BasketVault buys WHBAR, SAUCE and USDC on SaucerSwap V2, mints an HTS share token, and books its own rebalances with the Hedera Schedule Service. Contracts run against Hedera testnet; there is no local chain step."
+              "text": "FurnaceEngine creates your HTS token, pairs it with WHBAR on SaucerSwap V1, buys it back on its own Hedera schedule and burns what it buys. Contracts run against Hedera testnet; there is no local chain step."
             }
           ]
         },
@@ -37,7 +37,7 @@
               "url": "https://portal.hedera.com/faucet"
             },
             {
-              "label": "Put its key in packages/foundry/.env as DEPLOYER_PRIVATE_KEY, then deploy and run every flow on testnet",
+              "label": "Put its key in packages/foundry/.env as DEPLOYER_PRIVATE_KEY, then run the whole loop on testnet: token, pool, burn, scheduled burn",
               "command": "{run:foundry:live}"
             },
             {
