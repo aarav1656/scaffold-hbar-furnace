@@ -67,16 +67,29 @@ function useEngineLive(config: EngineConfig | undefined) {
     queryFn: async () => {
       const read = client!.readContract;
       const base = { address: ENGINE_ADDRESS, abi: ENGINE_ABI } as const;
-      const [status, tokenDecimals, dailyBudgetUsd, maxImpactBps, priceCeilingUsd, slippageBps, windowStart] =
-        await Promise.all([
-          read({ ...base, functionName: "status" }),
-          read({ ...base, functionName: "tokenDecimals" }),
-          read({ ...base, functionName: "dailyBudgetUsd" }),
-          read({ ...base, functionName: "maxImpactBps" }),
-          read({ ...base, functionName: "priceCeilingUsd" }),
-          read({ ...base, functionName: "slippageBps" }),
-          read({ ...base, functionName: "windowStart" }),
-        ]);
+      const [
+        status,
+        tokenDecimals,
+        dailyBudgetUsd,
+        maxImpactBps,
+        priceCeilingUsd,
+        slippageBps,
+        windowStart,
+        maxLotUsd,
+        minGapSeconds,
+        maxTwapDeviationBps,
+      ] = await Promise.all([
+        read({ ...base, functionName: "status" }),
+        read({ ...base, functionName: "tokenDecimals" }),
+        read({ ...base, functionName: "dailyBudgetUsd" }),
+        read({ ...base, functionName: "maxImpactBps" }),
+        read({ ...base, functionName: "priceCeilingUsd" }),
+        read({ ...base, functionName: "slippageBps" }),
+        read({ ...base, functionName: "windowStart" }),
+        read({ ...base, functionName: "maxLotUsd" }),
+        read({ ...base, functionName: "minGapSeconds" }),
+        read({ ...base, functionName: "maxTwapDeviationBps" }),
+      ]);
       const [preview, round, poolFee] = await Promise.allSettled([
         read({ ...base, functionName: "previewBuyback" }),
         read({ address: config!.feed, abi: FEED_ABI, functionName: "latestRoundData" }),
@@ -93,6 +106,9 @@ function useEngineLive(config: EngineConfig | undefined) {
         priceCeilingUsd,
         slippageBps: Number(slippageBps),
         windowStart: Number(windowStart),
+        maxLotUsd,
+        minGapSeconds: Number(minGapSeconds),
+        maxTwapDeviationBps: Number(maxTwapDeviationBps),
         /** Undefined when the dry run itself reverts, which is what a stale oracle does. */
         preview: previewValue
           ? { skip: SKIP_REASONS[previewValue[0]] as SkipReason, spend: previewValue[1] }

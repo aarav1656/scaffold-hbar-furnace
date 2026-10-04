@@ -34,7 +34,19 @@ export const TINYBAR_DECIMALS = 8;
 export const WEIBAR_PER_TINYBAR = 10_000_000_000n;
 
 /** The engine's `Skip` enum, in declaration order. */
-export const SKIP_REASONS = ["None", "NotReady", "NoFunds", "BudgetSpent", "PriceCeiling", "ImpactCap"] as const;
+export const SKIP_REASONS = [
+  "None",
+  "NotReady",
+  "NoFunds",
+  "BudgetSpent",
+  "PriceCeiling",
+  "ImpactCap",
+  "TooSoon",
+  "LotCap",
+  "NoTwap",
+  "TwapWindow",
+  "TwapDeviation",
+] as const;
 export type SkipReason = (typeof SKIP_REASONS)[number];
 
 /** Why a run spent nothing, in the words the page uses for both the dry run and the BuybackSkipped log. */
@@ -45,6 +57,11 @@ export const SKIP_TEXT: Record<SkipReason, string> = {
   BudgetSpent: "Today's USD budget is spent.",
   PriceCeiling: "The token price is at the USD ceiling.",
   ImpactCap: "The pool is too shallow for the price-impact cap.",
+  TooSoon: "The minimum gap since the last buyback has not passed.",
+  LotCap: "The lot size is below the minimum buyback at today's HBAR price.",
+  NoTwap: "The engine has no average price to compare the pool against yet. This run recorded one.",
+  TwapWindow: "The engine's average price is under a minute old, too short to trust.",
+  TwapDeviation: "The pool's price is above its own recent average by more than the bound, so the engine refused to buy.",
 };
 
 /**

@@ -98,6 +98,29 @@ export function PolicyPanel({ snap }: { snap: Snapshot }) {
         >
           {ceiling === 0n ? "None" : fmtUsdPrice(ceiling)}
         </Row>
+        <Row label="Lot size" note="Most one buyback spends, so the daily budget is spread over many buys.">
+          {lv.maxLotUsd === 0n ? "No cap" : fmtUsd(lv.maxLotUsd)}
+        </Row>
+        <Row
+          label="Gap between buys"
+          note={
+            now !== null && s.nextBuyAt > BigInt(now)
+              ? `The next buyback opens in ${fmtDuration(Number(s.nextBuyAt) - now)}.`
+              : "Measured from the last buyback that spent."
+          }
+        >
+          {lv.minGapSeconds === 0 ? "None" : fmtDuration(lv.minGapSeconds)}
+        </Row>
+        <Row
+          label="Price bound"
+          note={
+            s.twapPriceHbar > 0n
+              ? `Average over ${fmtDuration(Number(s.twapWindow))} is ${fmtUnits(s.twapPriceHbar, 8, 8)} HBAR. Spot sits ${fmtBps(s.twapDeviationBps)} above it.`
+              : "No average yet: each run records the price the next one is measured against."
+          }
+        >
+          {fmtBps(lv.maxTwapDeviationBps)} above the average
+        </Row>
         <Row label="Swap slippage" note="Lowest fill the router may return against its own quote.">
           {fmtBps(lv.slippageBps)}
         </Row>

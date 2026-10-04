@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-hbar/contract";
 const deployedContracts = {
   296: {
     FurnaceEngine: {
-      address: "0x706947ecc0411badef790282bb89b80126357d9d",
+      address: "0x8b674665f2b8b7e5220d5f8e466a4b0eb982db25",
       abi: [
         {
           type: "constructor",
@@ -67,6 +67,21 @@ const deployedContracts = {
                   type: "uint256",
                   internalType: "uint256",
                 },
+                {
+                  name: "maxLotUsd",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "minGapSeconds",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "maxTwapDeviationBps",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
               ],
             },
           ],
@@ -104,7 +119,33 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "MAX_MIN_GAP",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "MAX_SLIPPAGE_BPS",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "MAX_TWAP_DEVIATION_BPS",
           inputs: [],
           outputs: [
             {
@@ -130,7 +171,46 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "MIN_LOT_USD",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "MIN_SCHEDULED_GAS",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "MIN_TWAP_DEVIATION_BPS",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "MIN_TWAP_WINDOW",
           inputs: [],
           outputs: [
             {
@@ -274,6 +354,19 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "lastBuyAt",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "liquidityUnseeded",
           inputs: [],
           outputs: [
@@ -313,7 +406,46 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "maxLotUsd",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "maxOracleAge",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "maxTwapDeviationBps",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "minGapSeconds",
           inputs: [],
           outputs: [
             {
@@ -532,6 +664,45 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "setMaxLotUsd",
+          inputs: [
+            {
+              name: "value",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "setMaxTwapDeviationBps",
+          inputs: [
+            {
+              name: "value",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "setMinGapSeconds",
+          inputs: [
+            {
+              name: "value",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
           name: "setPriceCeilingUsd",
           inputs: [
             {
@@ -705,6 +876,31 @@ const deployedContracts = {
                   type: "uint256",
                   internalType: "uint256",
                 },
+                {
+                  name: "twapPriceHbar",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "twapWindow",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "twapDeviationBps",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "lastBuyAt",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "nextBuyAt",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
               ],
             },
           ],
@@ -794,6 +990,60 @@ const deployedContracts = {
           ],
           outputs: [],
           stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "twap",
+          inputs: [],
+          outputs: [
+            {
+              name: "state",
+              type: "uint8",
+              internalType: "enum FurnaceEngine.Skip",
+            },
+            {
+              name: "priceHbar",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "window",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "deviationBps",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "twapAt",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "twapCumulative",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
         },
         {
           type: "function",
@@ -972,6 +1222,45 @@ const deployedContracts = {
           inputs: [
             {
               name: "maxImpactBps",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
+          name: "MaxLotSet",
+          inputs: [
+            {
+              name: "maxLotUsd",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
+          name: "MaxTwapDeviationSet",
+          inputs: [
+            {
+              name: "maxTwapDeviationBps",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
+          name: "MinGapSet",
+          inputs: [
+            {
+              name: "minGapSeconds",
               type: "uint256",
               indexed: false,
               internalType: "uint256",
@@ -1346,7 +1635,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 41299172,
+      deployedOnBlock: 41355400,
     },
   },
 } as const;

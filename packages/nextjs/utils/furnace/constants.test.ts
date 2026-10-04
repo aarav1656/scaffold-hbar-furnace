@@ -46,7 +46,7 @@ describe("Skip enum", () => {
       .split(",")
       .map(s => s.trim())
       .filter(Boolean);
-    expect(declared).toHaveLength(6);
+    expect(declared).toHaveLength(11);
     expect([...SKIP_REASONS]).toEqual(declared);
   });
 
@@ -71,7 +71,7 @@ describe("gas and deployment constants", () => {
 
   it("points at a deployed engine whose ABI carries the events the page decodes", () => {
     expect(IS_DEPLOYED).toBe(true);
-    expect(ENGINE_ADDRESS.toLowerCase()).toBe("0x706947ecc0411badef790282bb89b80126357d9d");
+    expect(ENGINE_ADDRESS.toLowerCase()).toBe("0x8b674665f2b8b7e5220d5f8e466a4b0eb982db25");
     const events = ENGINE_ABI.filter(i => i.type === "event").map(i => i.name);
     for (const name of ["Burned", "ScheduledRun", "BuybackSkipped", "RunBooked", "RevenueReceived"]) {
       expect(events).toContain(name);

@@ -28,6 +28,9 @@ const LABELS: Record<string, string> = {
   MaxImpactSet: "Impact cap set",
   PriceCeilingSet: "Ceiling set",
   SlippageSet: "Slippage set",
+  MaxLotSet: "Lot size set",
+  MinGapSet: "Gap set",
+  MaxTwapDeviationSet: "Price bound set",
   OwnershipTransferred: "Ownership",
 };
 
@@ -90,6 +93,14 @@ function describe(ev: EngineEvent, snap: Snapshot): React.ReactNode {
         : `Price ceiling set to ${fmtUsdPrice(a.priceCeilingUsd)}.`;
     case "SlippageSet":
       return `Swap slippage set to ${fmtBps(a.slippageBps)}.`;
+    case "MaxLotSet":
+      return a.maxLotUsd === 0n ? "Lot cap removed." : `Lot size set to ${fmtUsd(a.maxLotUsd)} per buyback.`;
+    case "MinGapSet":
+      return a.minGapSeconds === 0n
+        ? "Minimum gap between buybacks removed."
+        : `Minimum gap between buybacks set to ${fmtDuration(Number(a.minGapSeconds))}.`;
+    case "MaxTwapDeviationSet":
+      return `Price bound set: no buy while the pool is more than ${fmtBps(a.maxTwapDeviationBps)} above its average.`;
     case "OwnershipTransferred":
       return `Ownership moved to ${shortAddress(a.newOwner)}.`;
     default:
