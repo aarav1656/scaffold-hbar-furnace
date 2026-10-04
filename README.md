@@ -2,9 +2,15 @@
 
 A buyback-and-burn engine for Hedera tokens, as a [Scaffold-HBAR](https://docs.hedera.com/solutions/tools/scaffold-hbar/index) template. A token team sends protocol revenue (HBAR) to `FurnaceEngine`. On a Hedera Schedule Service schedule the engine books for itself, it buys the team's HTS token back on SaucerSwap V1 inside a Chainlink-priced USD daily budget, never above a USD price ceiling, never moving the pool by more than a set price impact, then burns what it bought with the HTS supply key it holds. The token's `total_supply` falls on the mirror node, where anyone can read it.
 
-```bash
-npm create scaffold-hbar@latest -- --template aarav1656/scaffold-hbar-furnace
-```
+**Judge quick start**
+
+- Problem: token teams have no trust-minimised way to spend protocol revenue on buybacks, and burns that park tokens in an account leave `total_supply` unchanged.
+- Hedera services: HTS (token creation, `burnToken`, supply key held by the engine), Hedera Schedule Service HIP-1215 (the engine schedules its own runs). Ecosystem: SaucerSwap V1 (pool and swaps), Chainlink HBAR/USD (USD budget).
+- Scaffold: `npm create scaffold-hbar@latest -- --template aarav1656/scaffold-hbar-furnace`
+- Reproduce everything on testnet with a funded key in `packages/foundry/.env`: `yarn foundry:live` (token, pool, manual burn, network-triggered burn, mirror-node assertions).
+- Proof 1, a burn nobody called: [network-executed scheduled run](https://hashscan.io/testnet/transaction/1791020653.144458104), `CONTRACTCALL`, `scheduled: true`, paid by the engine, emitting `Burned`.
+- Proof 2, supply falls on the mirror node: [token 0.0.10840036](https://hashscan.io/testnet/token/0.0.10840036) `total_supply` went 98,005,700,860,434 to 96,110,832,443,647 in that run, exactly the 1,894,868,416,787 burned.
+- Offline check: `yarn foundry:test` runs 149 tests with no network.
 
 The `--` matters with `npm create`: without it npm keeps `--template` for itself. `npx create-scaffold-hbar@latest --template aarav1656/scaffold-hbar-furnace` is equivalent.
 
@@ -57,7 +63,7 @@ What the scaffold contains: one Solidity contract that is the whole protocol, 14
 
 Revenue-funded buybacks are an established practice on Hedera. SaucerSwap runs them for SAUCE ("Unified BrewSaucer: buybacks and burn", [tokenomics overview](https://docs.saucerswap.finance/tokenomics/overview)). Its burn account, 0.0.9209843, holds 1,180,632.7 SAUCE on mainnet: the tokens are parked in a keyless account, so they are out of circulation while the token's total supply is unchanged.
 
-Furnace takes the other route. The engine is the token's treasury and holds its supply key, so the burn is an HTS `burnToken` and `total_supply` itself falls. There is no parking account to audit and no key that could ever move the tokens back: the number on the mirror node is the number.
+Furnace takes the other route. The engine is the token's treasury and holds its supply key, so the burn is an HTS `burnToken` and `total_supply` itself falls. There is no parking account to audit. The token has one key, the supply key, held by the engine; admin, wipe, freeze, pause, KYC and fee schedule keys are null on the mirror node, so no wipe or freeze can touch a holder. The engine exposes no function that transfers FURN out except `claimTeamAllocation` (the team allocation, once) and the one-time `seedLiquidity` deposit into the pair, and the burn is `burnToken` on the tokens the swap just delivered: the number on the mirror node is the number.
 
 ## Why it needs SaucerSwap V1, Chainlink, HTS and HSS
 
@@ -189,7 +195,7 @@ After that, HBAR sent to the engine is revenue. `buyback()` runs on demand for t
 
 **Allocations are never burned.** The team and liquidity allocations sit in the engine's treasury balance next to the tokens a swap delivers. Burns only ever take the swap's delta, and the check above proves it on every run.
 
-**Liquidity is locked.** The LP tokens are minted to the engine and the contract has no function that transfers or approves them. `test_stateChangingSurface_isExactlyTheReviewedList` reads the compiled ABI and fails when a state-changing function appears that is not on the reviewed list, so a withdraw or sweep cannot be added unnoticed.
+**The engine holds every LP token and exposes no function that transfers them.** The LP tokens are minted to the engine and the contract has no function that transfers or approves them. `test_lpTokens_neverLeaveTheEngine` and `invariant_liquidityIsLockedForGood` (the engine's LP balance equals the LP supply minted to it) prove it under random call sequences, and `test_stateChangingSurface_isExactlyTheReviewedList` reads the compiled ABI and fails when a state-changing function appears that is not on the reviewed list, so a withdraw or sweep cannot be added unnoticed.
 
 ### Automation
 
@@ -243,9 +249,36 @@ A scheduled run also moves its buy into the pool: the first one debited the engi
 | Fuel reserve and minimum spend | `FUEL_RESERVE_HBAR`, `MIN_SPEND_HBAR_E8` at deploy. Both are immutable |
 | Interval | `startAutomation(seconds)`, 60 to 5,184,000 (60 days). Stop first with `stopAutomation()` to change it |
 | Token | `TOKEN_SUPPLY`, `DECIMALS`, `LIQUIDITY_PCT` for `yarn foundry:live`, or the arguments of `initialize` |
-| Mainnet | In `script/Deploy.s.sol` replace the router (`0x...4b40`, RouterV3 0.0.19264 on testnet) and the Chainlink HBAR/USD proxy with the mainnet addresses from the SaucerSwap docs and the Chainlink feed directory, then remove the `block.chainid != 296` gate. Deploy through the scaffold keystore flow: `yarn foundry:account:generate`, then `yarn foundry:deploy --network hedera_mainnet` |
+| Mainnet | The addresses in [Deploy to mainnet](#deploy-to-mainnet), then remove the `block.chainid != 296` gate in `script/Deploy.s.sol`. Deploy through the scaffold keystore flow: `yarn foundry:account:generate`, then `yarn foundry:deploy --network hedera_mainnet` |
 
 The testnet addresses this template uses: Chainlink HBAR/USD proxy `0x59bC155EB6c6C415fE43255aF66EcF0523c92B4a` (8 decimals, staleness limit 25 hours), SaucerSwap V1 RouterV3 `0x0000000000000000000000000000000000004b40` (0.0.19264), factory `0x00000000000000000000000000000000000026E7` (0.0.9959), WHBAR token `0x0000000000000000000000000000000000003aD2`.
+
+## Deploy to mainnet
+
+`script/Deploy.s.sol` takes two addresses: the SaucerSwap V1 router and the Chainlink HBAR/USD proxy. The factory and WHBAR are read from the router in the constructor, so they follow it.
+
+| Address | Testnet | Mainnet |
+| --- | --- | --- |
+| SaucerSwap V1 RouterV3 | `0x0000000000000000000000000000000000004b40` (0.0.19264) | `0x00000000000000000000000000000000002e7a5d` (0.0.3045981) |
+| SaucerSwap V1 factory | `0x00000000000000000000000000000000000026E7` (0.0.9959) | `0x0000000000000000000000000000000000103780` (0.0.1062784) |
+| WHBAR token | `0x0000000000000000000000000000000000003aD2` | `0x0000000000000000000000000000000000163B5a` (0.0.1456986) |
+| WHBAR contract | | `0x0000000000000000000000000000000000163B59` (0.0.1456985) |
+| Chainlink HBAR/USD proxy, 8 decimals | `0x59bC155EB6c6C415fE43255aF66EcF0523c92B4a` | `0xAF685FB45C12b92b5054ccb9313e135525F9b5d5` |
+
+Verified 2026-10-04 09:05 UTC against `https://mainnet.hashio.io/api`. Router, factory, WHBAR and feed addresses come from the [SaucerSwap contract deployments](https://docs.saucerswap.finance/developerx/contract-deployments) and the [Chainlink Hedera mainnet feed directory](https://reference-data-directory.vercel.app/feeds-hedera-mainnet.json).
+
+```bash
+R=https://mainnet.hashio.io/api
+cast code 0x00000000000000000000000000000000002e7a5d --rpc-url $R | wc -c   # 40237, router has code
+cast call 0x00000000000000000000000000000000002e7a5d "factory()(address)" --rpc-url $R   # 0x...103780
+cast call 0x00000000000000000000000000000000002e7a5d "whbar()(address)" --rpc-url $R     # 0x...163B5a
+cast code 0x0000000000000000000000000000000000103780 --rpc-url $R | wc -c   # 43765
+cast code 0x0000000000000000000000000000000000163b59 --rpc-url $R | wc -c   # 12149
+cast code 0xAF685FB45C12b92b5054ccb9313e135525F9b5d5 --rpc-url $R | wc -c   # 19145
+cast call 0xAF685FB45C12b92b5054ccb9313e135525F9b5d5 "latestRoundData()(uint80,int256,uint256,uint256,uint80)" --rpc-url $R
+```
+
+At the read, `latestRoundData` returned answer `10201640` ($0.10201640, 8 decimals) with `updatedAt` 1791102708 (2026-10-04 08:31:48 UTC), inside the engine's 25 hour staleness limit.
 
 ## Project layout
 
