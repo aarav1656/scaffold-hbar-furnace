@@ -30,7 +30,10 @@ contract MainnetConfigForkTest is Test {
                 dailyBudgetUsd: 1e8,
                 maxImpactBps: 500,
                 priceCeilingUsd: 0,
-                slippageBps: 300
+                slippageBps: 300,
+                maxLotUsd: 0,
+                minGapSeconds: 0,
+                maxTwapDeviationBps: 500
             })
         );
 

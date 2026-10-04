@@ -6,6 +6,7 @@ pragma solidity ^0.8.28;
 import { Test } from "forge-std/Test.sol";
 
 import { FurnaceEngine } from "../contracts/FurnaceEngine.sol";
+import { IHRC719 } from "../contracts/interfaces/IHRC719.sol";
 import { FurnaceBase } from "./FurnaceBase.sol";
 
 /// Drives the engine through random sequences of every action an owner, a payer or the network can take.
@@ -16,6 +17,10 @@ contract FurnaceHandler is Test {
     uint256 public immutable hbarUsd;
     uint256 public buybacks;
     uint256 public skipped;
+    /// Buys that spent past the lot cap, inside the gap, or while spot stood outside the average-price bound.
+    uint256 public lotViolations;
+    uint256 public gapViolations;
+    uint256 public twapViolations;
 
     constructor(FurnaceEngine engine_, address owner_, address recipient_, uint256 hbarUsd_) {
         engine = engine_;
@@ -31,12 +36,37 @@ contract FurnaceHandler is Test {
         require(ok);
     }
 
-    function buyback() external {
+    function buyback(uint256 dt) external {
+        // The network runs a buy some time after the last thing that happened.
+        vm.warp(block.timestamp + bound(dt, 0, 3 hours));
+        FurnaceBaseFeed(address(engine.hbarUsdFeed())).set(int256(hbarUsd), block.timestamp);
         (FurnaceEngine.Skip skip,) = engine.previewBuyback();
+        (FurnaceEngine.Skip twapState,,, uint256 deviation) = engine.twap();
+        uint256 lastBuy = engine.lastBuyAt();
+        uint256 before = address(engine).balance;
         vm.prank(owner);
         engine.buyback();
+        uint256 spent = before - address(engine).balance;
         if (skip == FurnaceEngine.Skip.None) ++buybacks;
         else ++skipped;
+        if (spent == 0) return;
+        uint256 lot = engine.maxLotUsd();
+        if (lot != 0 && spent > lot * 1e8 / hbarUsd) ++lotViolations;
+        // forge-lint: disable-next-line(block-timestamp)
+        if (block.timestamp < lastBuy + engine.minGapSeconds()) ++gapViolations;
+        if (twapState != FurnaceEngine.Skip.None || deviation > engine.maxTwapDeviationBps()) ++twapViolations;
+    }
+
+    /// An outside trader buys the token and moves the price up, as the TWAP bound exists to survive.
+    function pump(uint256 amount) external {
+        amount = bound(amount, 1e8, 80e8);
+        address token = engine.token();
+        address[] memory path = new address[](2);
+        path[0] = engine.whbar();
+        path[1] = token;
+        vm.deal(address(this), amount);
+        IHRC719(token).associate();
+        engine.router().swapExactETHForTokens{ value: amount }(0, path, address(this), block.timestamp + 300);
     }
 
     function warp(uint256 dt) external {
@@ -62,6 +92,24 @@ contract FurnaceHandler is Test {
     function setSlippage(uint256 value) external {
         vm.prank(owner);
         engine.setSlippageBps(bound(value, 0, 1000));
+    }
+
+    function setLot(uint256 value) external {
+        value = bound(value, 0, 60e8);
+        if (value != 0 && value < engine.MIN_LOT_USD()) value = engine.MIN_LOT_USD();
+        vm.prank(owner);
+        engine.setMaxLotUsd(value);
+    }
+
+    function setGap(uint256 value) external {
+        vm.prank(owner);
+        engine.setMinGapSeconds(bound(value, 0, 6 hours));
+    }
+
+    function setDeviation(uint256 value) external {
+        value = bound(value, engine.MIN_TWAP_DEVIATION_BPS(), engine.MAX_TWAP_DEVIATION_BPS());
+        vm.prank(owner);
+        engine.setMaxTwapDeviationBps(value);
     }
 
     function claim() external {
@@ -114,6 +162,18 @@ contract FurnacePropertiesTest is FurnaceBase {
 
     function invariant_theFuelReserveIsNeverSpent() public view {
         assertGe(address(engine).balance, FUEL);
+    }
+
+    function invariant_noBuySpendsPastTheLotCap() public view {
+        assertEq(handler.lotViolations(), 0);
+    }
+
+    function invariant_noBuySpendsInsideTheGap() public view {
+        assertEq(handler.gapViolations(), 0);
+    }
+
+    function invariant_noBuySpendsWhileSpotIsOutsideTheAveragePriceBound() public view {
+        assertEq(handler.twapViolations(), 0);
     }
 
     function invariant_hbarNeverReachesTheOwner() public view {

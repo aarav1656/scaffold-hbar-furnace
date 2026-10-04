@@ -51,6 +51,9 @@ abstract contract FurnaceBase is Test {
     uint256 internal constant DAILY_BUDGET_USD = 100e8;
     uint256 internal constant MAX_IMPACT_BPS = 500;
     uint256 internal constant SLIPPAGE_BPS = 100;
+    uint256 internal constant TWAP_DEVIATION_BPS = 500;
+    /// How long the pool has stood at its seed price when `_ready()` hands over: one hour of TWAP history.
+    uint256 internal constant POOL_AGE = 1 hours;
 
     address internal owner = makeAddr("owner");
     address internal alice = makeAddr("alice");
@@ -106,7 +109,10 @@ abstract contract FurnaceBase is Test {
             dailyBudgetUsd: DAILY_BUDGET_USD,
             maxImpactBps: MAX_IMPACT_BPS,
             priceCeilingUsd: 0,
-            slippageBps: SLIPPAGE_BPS
+            slippageBps: SLIPPAGE_BPS,
+            maxLotUsd: 0,
+            minGapSeconds: 0,
+            maxTwapDeviationBps: TWAP_DEVIATION_BPS
         });
     }
 
@@ -139,19 +145,50 @@ abstract contract FurnaceBase is Test {
         engine.seedLiquidity{ value: hbar }(0, 0);
     }
 
-    /// Initialised, paired and seeded: the state every buyback test starts from.
+    /// Initialised, paired and seeded `POOL_AGE` ago: the state every buyback test starts from, with an hour of TWAP.
     function _ready() internal {
+        vm.warp(T0 - POOL_AGE);
         _initialize();
         _createPool();
         _seed(SEED_HBAR);
+        vm.warp(T0);
     }
 
-    /// Moves the market without trading, as another trader would: sets the pair's reserves in its own order.
-    function _setPoolReserves(uint256 rHbar, uint256 rToken) internal {
+    /// Sets the pair's reserves in its own order without trading, as liquidity added or removed by others would.
+    /// The price history is untouched: the reserves change now.
+    function _moveReserves(uint256 rHbar, uint256 rToken) internal {
         // forge-lint: disable-next-line(unsafe-typecast)
         (uint112 h, uint112 t) = (uint112(rHbar), uint112(rToken));
         if (pool.token0() == address(furn)) pool.setReserves(t, h);
         else pool.setReserves(h, t);
+    }
+
+    /// A pool that has stood at these reserves for as long as the engine has watched it: the time-weighted price
+    /// already agrees with spot, so a test about sizing is not about the TWAP. Before the engine has a snapshot
+    /// it only sets the reserves.
+    function _setPoolReserves(uint256 rHbar, uint256 rToken) internal {
+        _moveReserves(rHbar, rToken);
+        if (engine.twapAt() != 0) {
+            pool.settleHistory(pool.token0() == address(furn), engine.twapCumulative(), engine.twapAt());
+        }
+    }
+
+    /// An outside trader buys the token with `hbar` through the router and moves the price up.
+    function _pump(uint256 hbar) internal {
+        address[] memory path = new address[](2);
+        path[0] = whbarAddr();
+        path[1] = address(furn);
+        vm.deal(alice, hbar);
+        vm.startPrank(alice);
+        furn.associate();
+        router.swapExactETHForTokens{ value: hbar }(0, path, alice, block.timestamp + 300);
+        vm.stopPrank();
+    }
+
+    /// Lets `seconds_` pass and keeps the oracle fresh.
+    function _pass(uint256 seconds_) internal {
+        vm.warp(block.timestamp + seconds_);
+        feed.set(HBAR_USD, block.timestamp);
     }
 
     /// Pays revenue into the engine from an outside account.

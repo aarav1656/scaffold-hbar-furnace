@@ -4,6 +4,7 @@
 pragma solidity ^0.8.28;
 
 // forge-lint: disable-start(unsafe-typecast)
+// forge-lint: disable-start(divide-before-multiply)
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -34,6 +35,7 @@ contract MockV1Pair {
     address public immutable router;
     uint112 private _reserve0;
     uint112 private _reserve1;
+    uint32 private _blockTimestampLast;
     uint256 public price0CumulativeLast;
     uint256 public price1CumulativeLast;
 
@@ -48,13 +50,26 @@ contract MockV1Pair {
     }
 
     function getReserves() external view returns (uint112, uint112, uint32) {
-        return (_reserve0, _reserve1, uint32(block.timestamp));
+        return (_reserve0, _reserve1, _blockTimestampLast);
     }
 
     function update(uint112 r0, uint112 r1) external {
         if (msg.sender != router) revert OnlyRouter();
+        _accrue();
         _reserve0 = r0;
         _reserve1 = r1;
+    }
+
+    /// UniswapV2 `_update`: the old price is weighted by the seconds it stood, using the reserves before the change.
+    function _accrue() private {
+        unchecked {
+            uint32 elapsed = uint32(block.timestamp) - _blockTimestampLast;
+            if (elapsed > 0 && _reserve0 != 0 && _reserve1 != 0) {
+                price0CumulativeLast += ((uint256(_reserve1) << 112) / _reserve0) * elapsed;
+                price1CumulativeLast += ((uint256(_reserve0) << 112) / _reserve1) * elapsed;
+            }
+        }
+        _blockTimestampLast = uint32(block.timestamp);
     }
 
     function payout(address token, address to, uint256 amount) external {
@@ -65,8 +80,18 @@ contract MockV1Pair {
 
     /// Lets a test move the market without trading, as another trader would.
     function setReserves(uint112 r0, uint112 r1) external {
+        _accrue();
         _reserve0 = r0;
         _reserve1 = r1;
+    }
+
+    /// Rewrites history as if the current reserves had stood since `since`, on top of the cumulative `base` read then.
+    /// Plays a market that moved long enough ago for a time-weighted average to have caught up.
+    function settleHistory(bool token0IsTracked, uint256 base, uint256 since) external {
+        _accrue();
+        uint256 span = block.timestamp - since;
+        if (token0IsTracked) price0CumulativeLast = base + ((uint256(_reserve1) << 112) / _reserve0) * span;
+        else price1CumulativeLast = base + ((uint256(_reserve0) << 112) / _reserve1) * span;
     }
 
     function mintLp(address to, uint256 amount) external {

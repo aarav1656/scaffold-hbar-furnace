@@ -10,6 +10,9 @@ import { FurnaceEngine } from "../contracts/FurnaceEngine.sol";
 ///   MAX_IMPACT_BPS     price impact one buyback may cause, <= 1000      (default 500, 5%)
 ///   PRICE_CEILING_USD  USD per whole token, 8 decimals, 0 for none      (default 0)
 ///   SLIPPAGE_BPS       tolerance below the router quote, <= 1000        (default 300)
+///   MAX_LOT_USD        most one buy may spend, USD 8 decimals, 0 for none (default 0)
+///   MIN_GAP_SECONDS    seconds between two buys that spend, <= 1 day    (default 0)
+///   MAX_TWAP_DEV_BPS   spot may sit this far above the average, 50..2000 (default 500, 5%)
 ///   FUEL_RESERVE_HBAR  whole HBAR that buybacks never touch             (default 25)
 ///   MIN_SPEND_HBAR_E8  smallest buyback in tinybar                      (default 1e8, 1 HBAR)
 contract DeployScript is ScaffoldETHDeploy {
@@ -29,7 +32,10 @@ contract DeployScript is ScaffoldETHDeploy {
                 dailyBudgetUsd: vm.envOr("DAILY_BUDGET_USD", uint256(1e8)),
                 maxImpactBps: vm.envOr("MAX_IMPACT_BPS", uint256(500)),
                 priceCeilingUsd: vm.envOr("PRICE_CEILING_USD", uint256(0)),
-                slippageBps: vm.envOr("SLIPPAGE_BPS", uint256(300))
+                slippageBps: vm.envOr("SLIPPAGE_BPS", uint256(300)),
+                maxLotUsd: vm.envOr("MAX_LOT_USD", uint256(0)),
+                minGapSeconds: vm.envOr("MIN_GAP_SECONDS", uint256(0)),
+                maxTwapDeviationBps: vm.envOr("MAX_TWAP_DEV_BPS", uint256(500))
             })
         );
         deployments.push(Deployment({ name: "FurnaceEngine", addr: address(engine) }));

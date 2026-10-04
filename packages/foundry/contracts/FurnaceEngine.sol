@@ -17,8 +17,9 @@ import { AggregatorV3Interface } from "./interfaces/AggregatorV3Interface.sol";
 /// @notice A token team's buyback-and-burn engine on Hedera. The engine creates the team's HTS token with itself as
 /// treasury and sole supply-key holder, pairs it with WHBAR on SaucerSwap V1 and locks the liquidity for good. HBAR
 /// sent to it is protocol revenue: on its own Hedera Schedule Service schedule the engine spends it buying the token
-/// back, within a daily USD budget priced by Chainlink, never past a USD price ceiling and never moving the pool by
-/// more than a set price impact, then burns what it bought. Supply is enforced by the network, so the burn is
+/// back, within a daily USD budget priced by Chainlink, in lots of bounded size with a minimum gap between buys, never
+/// past a USD price ceiling, never moving the pool by more than a set price impact and never while the pool's spot
+/// price sits above its own time-weighted average, then burns what it bought. Supply is enforced by the network, so the burn is
 /// verifiable on any mirror node.
 /// @dev The owner has no function that moves HBAR, LP tokens or bought tokens out of the engine. HBAR leaves only
 /// through the HTS and pair creation fees, the router and the gas of the engine's own schedules.
@@ -30,7 +31,12 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
         NoFunds,
         BudgetSpent,
         PriceCeiling,
-        ImpactCap
+        ImpactCap,
+        TooSoon,
+        LotCap,
+        NoTwap,
+        TwapWindow,
+        TwapDeviation
     }
 
     /// @notice What `buyback()` would do right now.
@@ -40,6 +46,7 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
         uint256 hbarUsd;
         uint256 reserveHbar;
         uint256 reserveToken;
+        uint256 cumulative;
     }
 
     struct Config {
@@ -53,6 +60,9 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
         uint256 maxImpactBps;
         uint256 priceCeilingUsd;
         uint256 slippageBps;
+        uint256 maxLotUsd;
+        uint256 minGapSeconds;
+        uint256 maxTwapDeviationBps;
     }
 
     struct Status {
@@ -76,6 +86,11 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
         uint256 nextRunAt;
         address pendingSchedule;
         uint256 interval;
+        uint256 twapPriceHbar;
+        uint256 twapWindow;
+        uint256 twapDeviationBps;
+        uint256 lastBuyAt;
+        uint256 nextBuyAt;
     }
 
     IHederaTokenService private constant HTS = IHederaTokenService(address(0x167));
@@ -91,6 +106,7 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
     uint256 private constant BUDGET_WINDOW = 1 days;
     /// Seconds past the ideal expiry to probe for a free slot: 1, 2, 4, 8, 16.
     uint256 private constant MAX_CAPACITY_DELAY = 16;
+    uint256 private constant Q112 = 2 ** 112;
 
     /// @notice Highest price impact a single buyback may be configured to cause, in basis points.
     uint256 public constant MAX_IMPACT_BPS = 1000;
@@ -99,6 +115,14 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
     /// @notice Shortest and longest gap between scheduled runs. Hedera refuses expiries past 62 days.
     uint256 public constant MIN_INTERVAL = 60;
     uint256 public constant MAX_INTERVAL = 60 days;
+    /// @notice Bounds on the pacing and price-bound settings. A lot is zero (no cap) or at least `MIN_LOT_USD`.
+    uint256 public constant MIN_LOT_USD = 1e8;
+    uint256 public constant MAX_MIN_GAP = 1 days;
+    /// @notice The spot-versus-average bound may be no tighter than 0.5% and no looser than 20%.
+    uint256 public constant MIN_TWAP_DEVIATION_BPS = 50;
+    uint256 public constant MAX_TWAP_DEVIATION_BPS = 2000;
+    /// @notice An average over fewer seconds than this is not an average: the run is skipped.
+    uint256 public constant MIN_TWAP_WINDOW = 60;
     /// @notice A self-rescheduling call under 3M gas runs once, fails to book its successor and still reports
     /// SUCCESS. Measured on testnet.
     uint256 public constant MIN_SCHEDULED_GAS = 3_000_000;
@@ -125,6 +149,13 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
     uint256 public priceCeilingUsd;
     /// @notice Most a swap may return below the router's own quote, in basis points.
     uint256 public slippageBps;
+    /// @notice Most one buy may spend, in USD (8 decimals). 0 means no lot cap.
+    uint256 public maxLotUsd;
+    /// @notice Seconds that must pass after a buy that spent before the next one. 0 means none.
+    uint256 public minGapSeconds;
+    /// @notice A buy is refused when the pool's spot price is more than this many basis points above its
+    /// time-weighted average since the engine's last snapshot.
+    uint256 public maxTwapDeviationBps;
 
     /// @notice The HTS token. The engine is its treasury and holds its supply key.
     address public token;
@@ -143,6 +174,13 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
     /// @notice Start of the current 24h budget window, and the USD spent inside it.
     uint256 public windowStart;
     uint256 public spentTodayUsd;
+    /// @notice Consensus second of the last buy that spent.
+    uint256 public lastBuyAt;
+
+    /// @notice The engine's own price snapshot of the pair: its cumulative price (HBAR per token, UQ112x112 seconds)
+    /// and the second it was read. The average price is measured from here.
+    uint256 public twapCumulative;
+    uint256 public twapAt;
 
     /// @notice Seconds between scheduled runs; 0 while automation is off.
     uint256 public runInterval;
@@ -162,6 +200,9 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
     event MaxImpactSet(uint256 maxImpactBps);
     event PriceCeilingSet(uint256 priceCeilingUsd);
     event SlippageSet(uint256 slippageBps);
+    event MaxLotSet(uint256 maxLotUsd);
+    event MinGapSet(uint256 minGapSeconds);
+    event MaxTwapDeviationSet(uint256 maxTwapDeviationBps);
     event AutomationStarted(uint256 interval);
     event AutomationStopped();
     event RunBooked(address indexed schedule, uint256 expiry);
@@ -201,6 +242,9 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
                 || config.scheduledGas < MIN_SCHEDULED_GAS
         ) revert BadConfig();
         _checkPolicy(config.maxImpactBps, config.priceCeilingUsd, config.slippageBps);
+        _checkLot(config.maxLotUsd);
+        _checkGap(config.minGapSeconds);
+        _checkDeviation(config.maxTwapDeviationBps);
 
         router = ISaucerSwapV1Router(config.router);
         factory = ISaucerSwapV1Factory(router.factory());
@@ -214,6 +258,9 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
         maxImpactBps = config.maxImpactBps;
         priceCeilingUsd = config.priceCeilingUsd;
         slippageBps = config.slippageBps;
+        maxLotUsd = config.maxLotUsd;
+        minGapSeconds = config.minGapSeconds;
+        maxTwapDeviationBps = config.maxTwapDeviationBps;
     }
 
     /// @notice HBAR sent here is protocol revenue. Everything above `fuelReserve` is available to buybacks.
@@ -312,6 +359,8 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
             token, want, minToken, minHbar, address(this), block.timestamp + 300
         );
         liquidityUnseeded = want - usedToken;
+        (uint256 reserveHbar, uint256 reserveToken, uint32 pairAt) = _pool();
+        if (reserveToken != 0) _snapshot(_cumulativeNow(reserveHbar, reserveToken, pairAt));
         emit LiquiditySeeded(usedToken, usedHbar, minted);
     }
 
@@ -350,19 +399,41 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
         emit SlippageSet(value);
     }
 
+    function setMaxLotUsd(uint256 value) external onlyOwner {
+        _checkLot(value);
+        maxLotUsd = value;
+        emit MaxLotSet(value);
+    }
+
+    function setMinGapSeconds(uint256 value) external onlyOwner {
+        _checkGap(value);
+        minGapSeconds = value;
+        emit MinGapSet(value);
+    }
+
+    function setMaxTwapDeviationBps(uint256 value) external onlyOwner {
+        _checkDeviation(value);
+        maxTwapDeviationBps = value;
+        emit MaxTwapDeviationSet(value);
+    }
+
     // ---------------------------------------------------------------- buyback
 
     /// @notice Spends revenue buying the token back and burns what it bought. The owner may call it any time; the
     /// engine calls it on its own schedule. Hedera has no public mempool, so the exposure of a scheduled buy is its
-    /// known time, which is why the price impact cap and the ceiling bound every run.
+    /// known time, which is why the price impact cap, the ceiling and the average-price bound every run.
     /// @return tokensBurned The tokens bought and burned, 0 when the run was skipped.
     function buyback() public onlyOwnerOrSelf nonReentrant returns (uint256 tokensBurned) {
         Plan memory plan = _plan();
+        // Every run that gets as far as judging the price moves the snapshot, so the next average is measured from
+        // here. A run inside the gap is refused before that and leaves it alone.
+        if (plan.skip != Skip.NotReady && plan.skip != Skip.TooSoon) _snapshot(plan.cumulative);
         if (plan.skip != Skip.None) {
             emit BuybackSkipped(plan.skip);
             return 0;
         }
         uint256 spend = plan.spend;
+        lastBuyAt = block.timestamp;
 
         // Effects first. The USD cost rounds up, so rounding can never let a day's spend pass the budget.
         // forge-lint: disable-next-line(block-timestamp)
@@ -457,6 +528,22 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
         return SafeCast.toUint256(answer);
     }
 
+    /// @notice The pool's time-weighted price since the engine's snapshot, in tinybar per whole token, the seconds it
+    /// covers, and how far spot sits above it in basis points (0 when spot is at or below it). `state` is `None` when
+    /// the average is usable and otherwise says why not: `NotReady` before the pool has liquidity, `NoTwap` with no
+    /// snapshot, `TwapWindow` when the snapshot is younger than `MIN_TWAP_WINDOW`.
+    function twap() public view returns (Skip state, uint256 priceHbar, uint256 window, uint256 deviationBps) {
+        (uint256 reserveHbar, uint256 reserveToken, uint32 pairAt) = _pool();
+        if (reserveHbar == 0 || reserveToken == 0) return (Skip.NotReady, 0, 0, 0);
+        uint256 twapQ;
+        uint256 spotQ;
+        (state, twapQ, spotQ, window) =
+            _twap(_cumulativeNow(reserveHbar, reserveToken, pairAt), reserveHbar, reserveToken);
+        if (state != Skip.None) return (state, 0, window, 0);
+        priceHbar = Math.mulDiv(twapQ, 10 ** tokenDecimals, Q112);
+        deviationBps = _deviationBps(twapQ, spotQ);
+    }
+
     /// @notice Everything a dashboard needs in one call. Never reverts: a stale oracle reads as zero USD figures.
     function status() external view returns (Status memory s) {
         s.token = token;
@@ -477,7 +564,16 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
         try this.hbarUsd() returns (uint256 usd) {
             s.hbarUsd = usd;
         } catch { }
-        (s.reserveHbar, s.reserveToken) = _reserves();
+        (s.reserveHbar, s.reserveToken,) = _pool();
+        s.lastBuyAt = lastBuyAt;
+        // forge-lint: disable-next-line(block-timestamp)
+        s.nextBuyAt = lastBuyAt + minGapSeconds > block.timestamp ? lastBuyAt + minGapSeconds : 0;
+        (Skip state, uint256 twapPrice, uint256 twapWindow, uint256 deviation) = twap();
+        if (state == Skip.None) {
+            s.twapPriceHbar = twapPrice;
+            s.twapWindow = twapWindow;
+            s.twapDeviationBps = deviation;
+        }
         if (s.reserveToken != 0) {
             uint256 scaled = s.reserveHbar * 10 ** tokenDecimals;
             s.priceHbar = scaled / s.reserveToken;
@@ -488,11 +584,19 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
     // ---------------------------------------------------------------- internals
 
     /// The single place the buyback size is decided; `buyback()` and `previewBuyback()` both read it. Each cap is
-    /// checked against `minSpend` in turn so a skip names the one that bound.
+    /// checked against `minSpend` in turn so a skip names the one that bound. The average-price bound comes last: it
+    /// does not size the buy, it allows or refuses it.
     function _plan() private view returns (Plan memory p) {
-        (p.reserveHbar, p.reserveToken) = _reserves();
+        uint32 pairAt;
+        (p.reserveHbar, p.reserveToken, pairAt) = _pool();
         if (p.reserveHbar == 0 || p.reserveToken == 0) {
             p.skip = Skip.NotReady;
+            return p;
+        }
+        p.cumulative = _cumulativeNow(p.reserveHbar, p.reserveToken, pairAt);
+        // forge-lint: disable-next-line(block-timestamp)
+        if (block.timestamp < lastBuyAt + minGapSeconds) {
+            p.skip = Skip.TooSoon;
             return p;
         }
         p.hbarUsd = hbarUsd();
@@ -524,7 +628,73 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
             return p;
         }
 
-        p.spend = Math.min(Math.min(available, byBudget), Math.min(byCeiling, byImpact));
+        uint256 byLot = maxLotUsd == 0 ? type(uint256).max : Math.mulDiv(maxLotUsd, TINYBAR_PER_HBAR, p.hbarUsd);
+        if (byLot < minSpend) {
+            p.skip = Skip.LotCap;
+            return p;
+        }
+
+        (Skip state, uint256 twapQ, uint256 spotQ,) = _twap(p.cumulative, p.reserveHbar, p.reserveToken);
+        if (state != Skip.None) {
+            p.skip = state;
+            return p;
+        }
+        if (_deviationBps(twapQ, spotQ) > maxTwapDeviationBps) {
+            p.skip = Skip.TwapDeviation;
+            return p;
+        }
+
+        p.spend = Math.min(Math.min(available, byBudget), Math.min(Math.min(byCeiling, byImpact), byLot));
+    }
+
+    /// The pair's cumulative price (HBAR per token, UQ112x112 times seconds) as of now: its stored value plus the
+    /// price it has held since its last update, as UniswapV2OracleLibrary does. The sums wrap by design and only
+    /// differences of two readings mean anything.
+    function _cumulativeNow(uint256 reserveHbar, uint256 reserveToken, uint32 pairAt)
+        private
+        view
+        returns (uint256 cumulative)
+    {
+        ISaucerSwapV1Pair p = ISaucerSwapV1Pair(pair);
+        cumulative = _tokenIsToken0 ? p.price0CumulativeLast() : p.price1CumulativeLast();
+        unchecked {
+            // forge-lint: disable-next-line(unsafe-typecast)
+            uint32 elapsed = uint32(block.timestamp) - pairAt;
+            // forge-lint: disable-next-line(divide-before-multiply)
+            cumulative += (reserveHbar * Q112 / reserveToken) * elapsed;
+        }
+    }
+
+    /// The average price since the snapshot and the spot price, both UQ112x112 HBAR per token. `None` when the
+    /// average is usable; `NoTwap` without a snapshot or when the pair's cumulative did not move; `TwapWindow` when
+    /// the snapshot is younger than `MIN_TWAP_WINDOW`.
+    function _twap(uint256 cumulative, uint256 reserveHbar, uint256 reserveToken)
+        private
+        view
+        returns (Skip state, uint256 twapQ, uint256 spotQ, uint256 window)
+    {
+        if (twapAt == 0) return (Skip.NoTwap, 0, 0, 0);
+        window = block.timestamp - twapAt;
+        if (window < MIN_TWAP_WINDOW) return (Skip.TwapWindow, 0, 0, window);
+        unchecked {
+            twapQ = (cumulative - twapCumulative) / window;
+        }
+        if (twapQ == 0) return (Skip.NoTwap, 0, 0, window);
+        spotQ = reserveHbar * Q112 / reserveToken;
+    }
+
+    /// How far `spotQ` sits above `twapQ`, in basis points rounded up so a bound is never crossed by rounding.
+    function _deviationBps(uint256 twapQ, uint256 spotQ) private pure returns (uint256) {
+        return spotQ > twapQ ? Math.mulDiv(spotQ - twapQ, BPS, twapQ, Math.Rounding.Ceil) : 0;
+    }
+
+    /// Moves the snapshot to `cumulative` at this second, unless the current one is still younger than the minimum
+    /// window: a run that cannot yet measure an average must not restart the clock.
+    function _snapshot(uint256 cumulative) private {
+        // forge-lint: disable-next-line(block-timestamp)
+        if (twapAt != 0 && block.timestamp < twapAt + MIN_TWAP_WINDOW) return;
+        twapCumulative = cumulative;
+        twapAt = block.timestamp;
     }
 
     /// Most HBAR (tinybar) that can go into the pool before its spot price passes `priceCeilingUsd`.
@@ -548,11 +718,13 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
         return block.timestamp >= windowStart + BUDGET_WINDOW ? 0 : spentTodayUsd;
     }
 
-    /// WHBAR and token reserves of the pair in tinybar and raw token units, whichever order the pair sorts them.
-    function _reserves() private view returns (uint256 reserveHbar, uint256 reserveToken) {
-        if (pair == address(0)) return (0, 0);
-        (uint112 r0, uint112 r1,) = ISaucerSwapV1Pair(pair).getReserves();
-        return _tokenIsToken0 ? (r1, r0) : (r0, r1);
+    /// WHBAR and token reserves of the pair in tinybar and raw token units, whichever order the pair sorts them, and
+    /// the second the pair last updated them.
+    function _pool() private view returns (uint256 reserveHbar, uint256 reserveToken, uint32 pairAt) {
+        if (pair == address(0)) return (0, 0, 0);
+        (uint112 r0, uint112 r1, uint32 at) = ISaucerSwapV1Pair(pair).getReserves();
+        pairAt = at;
+        (reserveHbar, reserveToken) = _tokenIsToken0 ? (r1, r0) : (r0, r1);
     }
 
     function _bookNext() private returns (int64 rc) {
@@ -581,6 +753,18 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
         if (
             impactBps == 0 || impactBps > MAX_IMPACT_BPS || slippage > MAX_SLIPPAGE_BPS || ceilingUsd > type(uint64).max
         ) revert BadConfig();
+    }
+
+    function _checkLot(uint256 lot) private pure {
+        if (lot != 0 && (lot < MIN_LOT_USD || lot > type(uint64).max)) revert BadConfig();
+    }
+
+    function _checkGap(uint256 gap) private pure {
+        if (gap > MAX_MIN_GAP) revert BadConfig();
+    }
+
+    function _checkDeviation(uint256 bps) private pure {
+        if (bps < MIN_TWAP_DEVIATION_BPS || bps > MAX_TWAP_DEVIATION_BPS) revert BadConfig();
     }
 
     function _associate(address asset) private {
