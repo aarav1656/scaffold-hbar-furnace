@@ -116,7 +116,7 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
     uint256 public constant MIN_INTERVAL = 60;
     uint256 public constant MAX_INTERVAL = 60 days;
     /// @notice Bounds on the pacing and price-bound settings. A lot is zero (no cap) or at least `MIN_LOT_USD`.
-    uint256 public constant MIN_LOT_USD = 1e8;
+    uint256 public constant MIN_LOT_USD = 1e7;
     uint256 public constant MAX_MIN_GAP = 1 days;
     /// @notice The spot-versus-average bound may be no tighter than 0.5% and no looser than 20%.
     uint256 public constant MIN_TWAP_DEVIATION_BPS = 50;

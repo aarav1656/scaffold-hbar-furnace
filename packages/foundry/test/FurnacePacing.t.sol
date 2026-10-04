@@ -94,7 +94,7 @@ contract FurnacePacingTest is FurnaceBase {
         engine.setMaxLotUsd(5e8);
 
         uint256 min = engine.MIN_LOT_USD();
-        assertEq(min, 1e8);
+        assertEq(min, 1e7);
         vm.startPrank(owner);
         vm.expectRevert(FurnaceEngine.BadConfig.selector);
         engine.setMaxLotUsd(min - 1);
@@ -241,7 +241,7 @@ contract FurnacePacingTest is FurnaceBase {
 
     function test_constructor_refusesPacingOutsideTheBounds() public {
         FurnaceEngine.Config memory c = _config();
-        c.maxLotUsd = 1e8 - 1;
+        c.maxLotUsd = 1e7 - 1;
         vm.expectRevert(FurnaceEngine.BadConfig.selector);
         new FurnaceEngine(c);
 
