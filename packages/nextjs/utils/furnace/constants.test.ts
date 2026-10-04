@@ -71,7 +71,7 @@ describe("gas and deployment constants", () => {
 
   it("points at a deployed engine whose ABI carries the events the page decodes", () => {
     expect(IS_DEPLOYED).toBe(true);
-    expect(ENGINE_ADDRESS.toLowerCase()).toBe("0x8b674665f2b8b7e5220d5f8e466a4b0eb982db25");
+    expect(ENGINE_ADDRESS.toLowerCase()).toBe("0x3249617e95785640140a05f55fd9c798f0e116df");
     const events = ENGINE_ABI.filter(i => i.type === "event").map(i => i.name);
     for (const name of ["Burned", "ScheduledRun", "BuybackSkipped", "RunBooked", "RevenueReceived"]) {
       expect(events).toContain(name);

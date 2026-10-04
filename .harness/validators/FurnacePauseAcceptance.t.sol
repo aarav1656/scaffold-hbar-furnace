@@ -74,7 +74,7 @@ contract FurnacePauseAcceptanceTest is FurnaceBase {
         _pause(true);
         assertEq(_buyback(), 0);
         _pause(false);
-        _pass(2 minutes);
+        _pass(MIN_WINDOW);
         (FurnaceEngine.Skip skip,) = engine.previewBuyback();
         assertEq(uint8(skip), uint8(FurnaceEngine.Skip.None));
         assertGt(_buyback(), 0);
@@ -115,10 +115,10 @@ contract FurnacePauseAcceptanceTest is FurnaceBase {
     function test_burnsStayOnlyWhatWasBoughtAcrossPauseCycles() public {
         assertGt(_buyback(), 0);
         _pause(true);
-        _pass(5 minutes);
+        _pass(MIN_WINDOW);
         _buyback();
         _pause(false);
-        _pass(5 minutes);
+        _pass(MIN_WINDOW);
         assertGt(_buyback(), 0);
         assertEq(furn.totalSupply(), TOTAL_SUPPLY - engine.totalBurned(), "every unit of supply lost is a bought burn");
         assertGe(furn.balanceOf(address(engine)), engine.teamUnclaimed() + engine.liquidityUnseeded());

@@ -6,11 +6,11 @@
 
 | Caller | Functions |
 | --- | --- |
-| Anyone | send HBAR (`receive`, emits `RevenueReceived`), `status`, `previewBuyback`, `twap`, `hbarUsd`, `poolCreationFee`, and every public getter |
+| Anyone | send HBAR (`receive`, emits `RevenueReceived`; or `depositRevenue(source)`, emits `RevenueTagged`), `rearm` (only when automation is on and the booked run is overdue), `buyback` (only when `minGapSeconds` is set, and only a call that spends), `status`, `previewBuyback`, `twap`, `hbarUsd`, `poolCreationFee`, and every public getter |
 | Owner | `initialize`, `createPool`, `seedLiquidity`, `claimTeamAllocation`, `setDailyBudgetUsd`, `setMaxImpactBps`, `setPriceCeilingUsd`, `setSlippageBps`, `setMaxLotUsd`, `setMinGapSeconds`, `setMaxTwapDeviationBps`, `startAutomation`, `stopAutomation`, `buyback` |
 | The engine itself (a network-run schedule) | `runScheduled`, which calls `buyback` |
 
-`buyback` reverts `NotOwnerOrSelf` for everyone else. The router quote that sets the swap's minimum output comes from the same pool in the same transaction, so on its own it cannot see a pool that was moved just before the buy. The engine's price snapshot can: a buy is refused when spot sits more than `maxTwapDeviationBps` above the average price since that snapshot, so a swap placed right ahead of a run turns the run into a recorded `TwapDeviation` skip. Hedera has no public mempool, which leaves the known time of a scheduled run as the exposure; the average-price bound, the lot size, the minimum gap, the impact cap, the ceiling and the slippage floor bound every run. The contract has no function that sends HBAR or LP tokens out, and the only token transfer is `claimTeamAllocation`, which pays the team allocation, once, to a recipient the owner names.
+`buyback` reverts `NotOwnerOrSelf` for everyone else while no gap is set; once the owner sets `minGapSeconds` anyone may call it, and a call that would not spend reverts `BuybackRefused` without changing state. The router quote that sets the swap's minimum output comes from the same pool in the same transaction, so on its own it cannot see a pool that was moved just before the buy. The engine's price snapshot can: a buy is refused when spot sits more than `maxTwapDeviationBps` above the average price since that snapshot, so a swap placed right ahead of a run turns the run into a recorded `TwapDeviation` skip. Hedera has no public mempool, which leaves the known time of a scheduled run as the exposure; the average-price bound, the lot size, the minimum gap, the impact cap, the ceiling and the slippage floor bound every run. The contract has no function that sends HBAR or LP tokens out, and the only token transfer is `claimTeamAllocation`, which pays the team allocation, once, to a recipient the owner names.
 
 ## Contract state
 
@@ -41,7 +41,7 @@ Owner-tunable policy (bounded, with events):
 
 Storage the protocol keeps: `token`, `tokenDecimals`, `pair`, `lpToken`, `teamUnclaimed`, `liquidityUnseeded`, `totalBurned`, `totalSpentHbar`, `windowStart`, `spentTodayUsd`, `lastBuyAt`, `twapCumulative`, `twapAt`, `runInterval`, `pendingSchedule`, `nextRunAt`.
 
-Constants: `MAX_IMPACT_BPS = 1000`, `MAX_SLIPPAGE_BPS = 1000`, `MIN_TWAP_WINDOW = 60`, `MIN_INTERVAL = 60`, `MAX_INTERVAL = 60 days`, `MIN_SCHEDULED_GAS = 3_000_000`, a 1 day budget window, a capacity probe of up to 16 seconds, and the three Hedera system contracts at `0x167` (Token Service), `0x168` (exchange rate) and `0x16b` (Schedule Service).
+Constants: `MAX_IMPACT_BPS = 1000`, `MAX_SLIPPAGE_BPS = 1000`, `MIN_TWAP_WINDOW = 15 minutes`, `POOL_FEE_ALLOWANCE_BPS = 100`, `REARM_GRACE = 10 minutes`, `MIN_INTERVAL = 60`, `MAX_INTERVAL = 60 days`, `MIN_SCHEDULED_GAS = 3_000_000`, a 1 day budget window, a capacity probe of up to 16 seconds, and the three Hedera system contracts at `0x167` (Token Service), `0x168` (exchange rate) and `0x16b` (Schedule Service).
 
 The constructor reverts `BadConfig` for a zero router or feed, a zero `minSpend`, `scheduledGas` under 3,000,000, an impact of 0 or over 1000, a slippage over 1000, a ceiling that does not fit in `uint64`, a lot between 0 and `MIN_LOT_USD` or past `uint64`, a gap over `MAX_MIN_GAP`, or a price bound outside 50 to 2000 basis points.
 
@@ -140,7 +140,7 @@ Checks run in that order, so a skip names the first cap that fell under `minSpen
 
 **Lot size and gap.** `maxLotUsd` is a USD cap per buy, converted at the Chainlink price like the budget, so a day's budget is spread over several buys. `minGapSeconds` is measured from the last buy that spent (`lastBuyAt`); a skip never starts or extends it, and the check runs before the oracle is read, so a run inside the gap needs no feed. Both apply to the scheduled run, the owner's `buyback()` and the dry run alike.
 
-**Average-price bound.** The pair stores `priceCumulativeLast`, the sum of its price times the seconds each price stood (UQ112x112, HBAR per token), and updates it on its own swaps and liquidity changes. The engine reads it, adds the price the pair has held since its last update (`spotQ x (now - pairTimestamp)`), and keeps a snapshot `(twapCumulative, twapAt)`. With `W = now - twapAt`, the average since the snapshot is `twapQ = (cumulativeNow - twapCumulative) / W` and spot is `spotQ = R x 2^112 / T`. Spot above the average by `ceil((spotQ - twapQ) x 10000 / twapQ)` basis points more than `maxTwapDeviationBps` is refused as `TwapDeviation`. The rounding is up, so a bound is never crossed by rounding. A spot below the average is never refused: the engine buys cheaper. No snapshot, or a pair whose cumulative did not move, reads as `NoTwap`; a snapshot younger than `MIN_TWAP_WINDOW` (60 s) reads as `TwapWindow`. `seedLiquidity` takes the first snapshot. `buyback()` moves it to the current second on every run that gets as far as judging the price, a skip included, and a run younger than the minimum window leaves it alone; a run inside the gap is refused earlier and leaves it alone too. `_plan()` only reads the snapshot, so the preview and the run agree.
+**Average-price bound.** The pair stores `priceCumulativeLast`, the sum of its price times the seconds each price stood (UQ112x112, HBAR per token), and updates it on its own swaps and liquidity changes. The engine reads it, adds the price the pair has held since its last update (`spotQ x (now - pairTimestamp)`), and keeps a snapshot `(twapCumulative, twapAt)`. With `W = now - twapAt`, the average since the snapshot is `twapQ = (cumulativeNow - twapCumulative) / W` and spot is `spotQ = R x 2^112 / T`. Spot above the average by `ceil((spotQ - twapQ) x 10000 / twapQ)` basis points more than `maxTwapDeviationBps` is refused as `TwapDeviation`. The rounding is up, so a bound is never crossed by rounding. A spot below the average is never refused: the engine buys cheaper. No snapshot, or a pair whose cumulative did not move, reads as `NoTwap`; a snapshot younger than `MIN_TWAP_WINDOW` (15 minutes) reads as `TwapWindow`, so spot is never trusted in place of an average. `seedLiquidity` takes the first snapshot. `buyback()` moves it to the current second on every run that gets as far as judging the price, a skip included, and a run younger than the minimum window leaves it alone; a run inside the gap is refused earlier and leaves it alone too. `_plan()` only reads the snapshot, so the preview and the run agree.
 
 The bound holds against any move shorter than the window: a swap placed in the same block as a run moves spot by its full size and the average by nothing, so the engine records the skip and the next run measures from there. A price that stays moved for a whole window becomes the average, which is how a legitimate repricing is absorbed after one skipped run.
 
@@ -151,6 +151,10 @@ The bound holds against any move shorter than the window: a swap placed in the s
 **Impact.** Buying `x` into reserve `R` returns tokens `x / (R + x)` below the pre-trade spot quote. Setting `x / (R + x) = bps / 10000` and solving for `x` gives `R x bps / (10000 - bps)`.
 
 **Slippage floor.** `minOut = getAmountsOut(spend)[1] x (10000 - slippageBps) / 10000`.
+
+**Swap floor.** `minOut = max(getAmountsOut(spend)[1] x (10000 - slippageBps) / 10000, floor)`, where `floor = spend x 2^112 / twapQ x 10000 / (10000 + maxTwapDeviationBps) x (10000 - maxImpactBps) / 10000 x (10000 - 100) / 10000`. The router quote comes from the pool being traded in, so it cannot catch a router that gives a bad price and quotes it; the floor uses the engine's own average and the caps, and an honest fill at the extreme of every cap still clears it.
+
+**Rearm.** `rearm()` is open to anyone. With automation on and the pending schedule missing, or overdue by more than `REARM_GRACE`, it deletes the dead schedule and books one replacement; a live schedule reverts `ScheduleLive`, so it cannot start a second chain. The engine pays for the replaced run as usual.
 
 **Burn.** `tokensBurned = balance after the swap - balance before it`. The `Burned` event carries `priceHbar = spend x 10^d / tokensBurned` and `priceUsd = priceHbar x u / 1e8`.
 
@@ -226,13 +230,17 @@ Each row lists tests in `packages/foundry/test/`. `yarn foundry:test` runs all o
 | 21 | The snapshot moves on judged runs only: seed, skip and spend move it, a run inside the gap or the minimum window does not | `test_seedingTheEngineStartsTheSnapshot`, `test_aBuybackMovesTheSnapshotToItsOwnSecond`, `test_aRunThatSkipsForAnotherReasonStillMovesTheSnapshot`, `test_aRunInsideTheMinimumWindowLeavesTheSnapshotAlone`, `test_gap_aRunInsideItLeavesThePriceSnapshotAlone` |
 | 22 | A buy never spends past the lot cap, which follows the HBAR price in USD | `test_lot_capsOneBuyInUsd`, `test_lot_followsTheHbarPrice`, `test_lot_smallerOfLotAndBudgetWins`, `test_lot_aLotBelowTheMinimumSpendSkipsAndSaysSo`, `test_lot_theEarlierCapsAreNamedFirst`, `invariant_noBuySpendsPastTheLotCap` |
 | 23 | No buy spends inside the gap, the gap reopens on the exact second, and a run inside it neither reverts nor stops booking | `test_gap_skipsInsideItAndBuysOnTheExactSecond`, `test_gap_aRunSkippedForAnotherReasonNeverStartsIt`, `test_gap_isCheckedBeforeTheOracleIsRead`, `test_gap_theOwnerCannotBypassItWithAManualBuyback`, `test_gap_scheduledRunInsideItNeitherRevertsNorStopsBooking`, `invariant_noBuySpendsInsideTheGap` |
+| 25 | Anyone may trigger a gap-limited buy that spends; a refused outsider changes nothing; the owner keeps the skip record | `test_withAGapAnyoneMayTriggerABuy`, `test_anOutsiderInsideTheGapIsRefusedAndChangesNothing`, `test_anOutsiderCannotMoveTheSnapshotWithARefusedCall`, `test_withoutAGapOnlyTheOwnerOrTheEngineMayBuy`, `test_theGapBindsEveryCallerTheSame` |
+| 26 | `rearm()` revives a dead chain and never starts a second | `test_rearm_leavesALiveScheduleAlone`, `test_rearm_booksAReplacementOnceTheScheduleIsOverdue`, `test_rearm_needsAutomationOn`, `test_rearm_revertsWhenTheNetworkRefusesTheBooking` |
+| 27 | Tagged revenue is revenue with its source on the record | `test_depositRevenue_tagsTheSourceAndKeepsTheHbar`, `test_depositRevenue_refusesZeroAndPlainTransfersStayUntagged` |
+| 28 | A router that quotes and fills a bad price is stopped by the average-price floor | `test_aRouterThatQuotesAndFillsABadPriceIsStoppedByTheAveragePriceFloor`, `test_aRouterWithinTheAllowanceStillFills`, `test_theFloorIsLooserThanAnHonestFillAtEveryCap` |
 | 24 | The lot, gap and price-bound settings are owner-only and bounded, in the constructor and the setters | `test_setMaxLot_isOwnerOnlyBoundedAndEmits`, `test_setMinGap_isOwnerOnlyBoundedAndEmits`, `test_setMaxTwapDeviation_isBoundedAndEmits`, `test_setMaxTwapDeviation_isOwnerOnly`, `test_constructor_refusesPacingOutsideTheBounds`, `test_constructor_refusesADeviationOutsideTheBounds` |
 
-235 tests in nine suites: `FurnaceSetupTest` (41), `FurnaceBuybackTest` (41), `FurnaceReversedOrderTest` (42), `FurnaceTwapTest` (24), `FurnaceTwapReversedOrderTest` (25), `FurnacePacingTest` (17), `FurnacePacingReversedOrderTest` (17), `FurnaceAutomationTest` (19) and `FurnacePropertiesTest` (9 invariants, 64 runs of 40 calls, with an outside trader who pumps the pool and a handler that counts any buy outside the lot, gap or price bound). The mainnet fork test is skipped off a mainnet fork. `FurnaceBase.sol` etches HTS (0x167), the exchange rate (0x168) and the Schedule Service (0x16b) mocks, a constant-product SaucerSwap V1 factory, router and pair at the 0.3% fee, and a Chainlink feed, at the addresses the contract calls, so `FurnaceEngine` runs unmodified.
+269 tests in eleven suites: `FurnaceSetupTest` (41), `FurnaceBuybackTest` (41), `FurnaceReversedOrderTest` (42), `FurnaceTwapTest` (24), `FurnaceTwapReversedOrderTest` (25), `FurnacePacingTest` (17), `FurnacePacingReversedOrderTest` (17), `FurnaceAccessTest` (17), `FurnaceAccessReversedOrderTest` (17), `FurnaceAutomationTest` (19) and `FurnacePropertiesTest` (9 invariants, 64 runs of 40 calls, with an outside trader who pumps the pool and a handler that counts any buy outside the lot, gap or price bound). The mainnet fork test is skipped off a mainnet fork. `FurnaceBase.sol` etches HTS (0x167), the exchange rate (0x168) and the Schedule Service (0x16b) mocks, a constant-product SaucerSwap V1 factory, router and pair at the 0.3% fee, and a Chainlink feed, at the addresses the contract calls, so `FurnaceEngine` runs unmodified.
 
 ## Mutation checks
 
-A test that passes with the guarded code deleted proves nothing, so each guard was broken on purpose, the suite was run, and the file was restored. Thirty-eight mutants, every one turned the suite red, and the restored file turned it green each time:
+A test that passes with the guarded code deleted proves nothing, so each guard was broken on purpose, the suite was run, and the file was restored. Fifty-one mutants, every one turned the suite red, and the restored file turned it green each time:
 
 | # | Mutant | Caught by |
 | --- | --- | --- |
@@ -274,8 +282,21 @@ A test that passes with the guarded code deleted proves nothing, so each guard w
 | 36 | Gap comparison `<` changed to `<=` | `test_gap_skipsInsideItAndBuysOnTheExactSecond` and 3 more |
 | 37 | Minimum window comparison `<` changed to `<=` | 10 tests |
 | 38 | Lot in USD used as if it were HBAR (no price division) | `test_lot_capsOneBuyInUsd` and 3 more |
+| 39 | Outsiders always allowed to buy | `test_buyback_isOwnerOrSelfOnly`, `test_withoutAGapOnlyTheOwnerOrTheEngineMayBuy` |
+| 40 | Outsider refusal removed | `test_anOutsiderInsideTheGapIsRefusedAndChangesNothing` and 3 more |
+| 41 | Owner treated as an outsider | 58 tests |
+| 42 | `rearm` live-schedule check removed | `test_rearm_leavesALiveScheduleAlone` |
+| 43 | `rearm` allowed with automation off | `test_rearm_needsAutomationOn` |
+| 44 | `rearm` grace comparison off by one | `test_rearm_leavesALiveScheduleAlone` |
+| 45 | `rearm` keeps the dead schedule | `test_rearm_booksAReplacementOnceTheScheduleIsOverdue` |
+| 46 | `depositRevenue` accepts zero | `test_depositRevenue_refusesZeroAndPlainTransfersStayUntagged` |
+| 47 | Average-price swap floor dropped | `test_aRouterThatQuotesAndFillsABadPriceIsStoppedByTheAveragePriceFloor` |
+| 48 | Floor ignores the allowed deviation | `test_theFloorIsLooserThanAnHonestFillAtEveryCap` and 2 more |
+| 49 | Floor computed from 0 instead of the average | `test_aRouterThatQuotesAndFillsABadPriceIsStoppedByTheAveragePriceFloor` |
+| 50 | Average window back to 60 s | `test_windowOneSecondShortOfTheMinimumSkips`, `test_aRunInsideTheMinimumWindowLeavesTheSnapshotAlone` |
+| 51 | `rearm` books nothing | `test_rearm_booksAReplacementOnceTheScheduleIsOverdue`, `test_rearm_revertsWhenTheNetworkRefusesTheBooking` |
 
-`forge fmt --check` is clean, `forge lint` exits 0 with no warnings, and the `FurnaceEngine` runtime is 17,314 bytes against the 24,576 limit.
+`forge fmt --check` is clean, `forge lint` exits 0 with no warnings, and the `FurnaceEngine` runtime is 18,209 bytes against the 24,576 limit.
 
 ## Units
 

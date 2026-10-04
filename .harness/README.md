@@ -41,8 +41,8 @@ row, `AGENTS.md`). No coding agent ran.
 
 | Copy | Result | Detail |
 | --- | --- | --- |
-| Template as committed | `passed=false`, `findings=15` | 13 missing names or files, plus `pause-acceptance` and `engine-rules`. `yarn install`, `foundry:test` (235 tests), `lint`, `next:check-types` and `next:build` all exit 0, so none of the 15 is a false alarm. |
-| Template with the reference | `passed=true`, `findings=0` | 238 tests in `foundry:test`, agent suite 3 passed, acceptance suite 9 passed, engine rules hold, lint, types and build exit 0. The acceptance file is removed after the run. |
+| Template as committed | `passed=false`, `findings=15` | 13 missing names or files, plus `pause-acceptance` and `engine-rules`. `yarn install`, `foundry:test` (269 tests), `lint`, `next:check-types` and `next:build` all exit 0, so none of the 15 is a false alarm. |
+| Template with the reference | `passed=true`, `findings=0` | 272 tests in `foundry:test`, agent suite 3 passed, acceptance suite 9 passed, engine rules hold, lint, types and build exit 0. The acceptance file is removed after the run. |
 
 Each validator also fails when the rule it guards is broken. Five deliberate
 bugs in the reference engine, each restored afterwards (the restored copy runs
@@ -52,6 +52,6 @@ acceptance and engine-rules green again):
 | --- | --- |
 | The pause comparison replaced by `false` | agent suite and `_plan` rule |
 | `runScheduled` buys before it books its successor | acceptance suite and book-first rule |
-| `lastBuyAt` stamped before the skip return | acceptance suite and stamp rule |
+| `lastBuyAt` stamped before the skip return | acceptance suite and stamp rule (the stamp rule also fires alone) |
 | `buyback` burns the engine's whole balance, not the swap's difference | agent suite and burn-only-bought rule |
 | The pause checked inside `buyback()` instead of `_plan()` | one-sizing-function rule (the acceptance suite stays green, so this rule is the only guard) |

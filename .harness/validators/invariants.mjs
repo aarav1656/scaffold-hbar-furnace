@@ -75,7 +75,7 @@ if (scheduled && buyback && plan && preview) {
   rule(!/buybacksPaused/.test(scheduled), "runScheduled must not branch on the pause: it books first and buyback skips");
 
   // The spend ledger moves only when a buyback spends: lastBuyAt is written after buyback's skip return.
-  const skipReturn = buyback.indexOf("plan.skip != Skip.None");
+  const skipReturn = buyback.indexOf("emit BuybackSkipped");
   const stamp = buyback.search(/lastBuyAt\s*=\s*block\.timestamp/);
   rule(skipReturn >= 0 && stamp > skipReturn, "lastBuyAt must be stamped only after buyback's skip return");
 }

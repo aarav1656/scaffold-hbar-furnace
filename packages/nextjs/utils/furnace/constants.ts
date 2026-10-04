@@ -60,7 +60,7 @@ export const SKIP_TEXT: Record<SkipReason, string> = {
   TooSoon: "The minimum gap since the last buyback has not passed.",
   LotCap: "The lot size is below the minimum buyback at today's HBAR price.",
   NoTwap: "The engine has no average price to compare the pool against yet. This run recorded one.",
-  TwapWindow: "The engine's average price is under a minute old, too short to trust.",
+  TwapWindow: "The engine's average price is under 15 minutes old, too short to trust.",
   TwapDeviation: "The pool's price is above its own recent average by more than the bound, so the engine refused to buy.",
 };
 

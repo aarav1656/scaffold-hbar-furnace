@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-hbar/contract";
 const deployedContracts = {
   296: {
     FurnaceEngine: {
-      address: "0x8b674665f2b8b7e5220d5f8e466a4b0eb982db25",
+      address: "0x3249617e95785640140a05f55fd9c798f0e116df",
       abi: [
         {
           type: "constructor",
@@ -1752,7 +1752,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 41355400,
+      deployedOnBlock: 41356990,
     },
   },
 } as const;

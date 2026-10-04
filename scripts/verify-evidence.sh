@@ -13,9 +13,9 @@ M=https://testnet.mirrornode.hedera.com/api/v1
 SOURCIFY=https://sourcify.dev/server/v2/contract/296
 
 # Engine v2
-E2=0x8B674665F2b8B7e5220D5F8e466a4B0eB982Db25 # FurnaceEngine v2
-T2ID=0.0.10860071                              # FURN of v2, created by the engine
-EXPECT_CODE_BYTES=${EXPECT_CODE_BYTES:-17314}
+E2=0x3249617e95785640140A05f55Fd9c798F0E116Df # FurnaceEngine v2, contract 0.0.10860653
+T2ID=0.0.10860654                              # FURN of v2, created by the engine
+EXPECT_CODE_BYTES=${EXPECT_CODE_BYTES:-18209}
 MIN_SCHEDULED_BURNS=${MIN_SCHEDULED_BURNS:-3}
 EXPECT_LOT=${EXPECT_LOT:-30000000}  # $0.30, 8 decimals
 EXPECT_GAP=${EXPECT_GAP:-900}
@@ -135,6 +135,12 @@ refusal() { # refusal <name> <reason number>
 }
 refusal TooSoon 6
 refusal TwapDeviation 10
+
+# tagged revenue: a RevenueTagged log whose source decodes to the label the live script used
+tag_topic=$(cast keccak 'RevenueTagged(bytes32,address,uint256)')
+tagged=$(jq -r --arg t "$tag_topic" 'select(.topics[0]==$t)|.topics[1]' <<<"$V2_LOGS" | head -1)
+[ -n "$tagged" ] && [ "$(cast parse-bytes32-string "$tagged" 2>/dev/null)" = "swap-fees" ]
+row "v2 tagged revenue source on chain" $? "RevenueTagged source = $(cast parse-bytes32-string "${tagged:-0x00}" 2>/dev/null)"
 
 verify_engine v1 "$E1" "$E1ID" "$T1ID" "$V1_CODE_BYTES" "$V1_MIN_SCHEDULED_BURNS"
 
