@@ -223,6 +223,32 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "POOL_FEE_ALLOWANCE_BPS",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "REARM_GRACE",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "buyback",
           inputs: [],
           outputs: [
@@ -266,6 +292,19 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "depositRevenue",
+          inputs: [
+            {
+              name: "source",
+              type: "bytes32",
+              internalType: "bytes32",
+            },
+          ],
+          outputs: [],
+          stateMutability: "payable",
         },
         {
           type: "function",
@@ -564,6 +603,13 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "rearm",
+          inputs: [],
+          outputs: [],
+          stateMutability: "nonpayable",
         },
         {
           type: "function",
@@ -1327,8 +1373,52 @@ const deployedContracts = {
         },
         {
           type: "event",
+          name: "Rearmed",
+          inputs: [
+            {
+              name: "stale",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "replacement",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
           name: "RevenueReceived",
           inputs: [
+            {
+              name: "from",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "amount",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "event",
+          name: "RevenueTagged",
+          inputs: [
+            {
+              name: "source",
+              type: "bytes32",
+              indexed: true,
+              internalType: "bytes32",
+            },
             {
               name: "from",
               type: "address",
@@ -1443,6 +1533,11 @@ const deployedContracts = {
         },
         {
           type: "error",
+          name: "AutomationOff",
+          inputs: [],
+        },
+        {
+          type: "error",
           name: "BadConfig",
           inputs: [],
         },
@@ -1465,6 +1560,17 @@ const deployedContracts = {
               name: "answer",
               type: "int256",
               internalType: "int256",
+            },
+          ],
+        },
+        {
+          type: "error",
+          name: "BuybackRefused",
+          inputs: [
+            {
+              name: "reason",
+              type: "uint8",
+              internalType: "enum FurnaceEngine.Skip",
             },
           ],
         },
@@ -1598,6 +1704,17 @@ const deployedContracts = {
               name: "responseCode",
               type: "int64",
               internalType: "int64",
+            },
+          ],
+        },
+        {
+          type: "error",
+          name: "ScheduleLive",
+          inputs: [
+            {
+              name: "nextRunAt",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
         },

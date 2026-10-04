@@ -28,7 +28,7 @@ n() { awk '{print $1}'; }
 | 4 | HTS token creation takes its fee from the contract's balance | `initialize` is `payable` |
 | 5 | The engine must associate with the LP token before liquidity is minted to it | `createPool` through `_associate` |
 | 6 | A V1 pair sorts its tokens by address, and `router.whbar()` differs from `router.WHBAR()` | `token0()` read once, both orders tested |
-| 7 | V1 price accumulators are zero until the first swap | pricing from spot reserves and Chainlink |
+| 7 | V1 pairs keep a live price accumulator, and `getReserves()` returns the second of its last update | `twap()`, the snapshot and the average-price bound |
 | 8 | HTS refuses an allowance above a finite token's max supply | `seedLiquidity` approves exactly the allocation |
 | 9 | HTS caps a burn at the treasury balance | burns only the swap's delta, `AllocationBreach` check |
 | 10 | A scheduled call arrives with `msg.sender` equal to the booking contract | `runScheduled` and `OnlySelf` |
@@ -153,20 +153,23 @@ Unit tests: `test_poolOrder_matchesTheAddressSort`, `test_poolOrder_tokenIsToken
 
 **Source.** Our measurement.
 
-## V1 price accumulators are zero until the first swap
+## V1 pairs keep a live price accumulator
 
-**What happens.** `price0CumulativeLast` and `price1CumulativeLast` exist on the V1 pair but read 0 until the pair's first trade, and a pool with no trades has no time-weighted price. Measured on a probe pair before and after its first swap.
+**What happens.** A SaucerSwap V1 pair is a Uniswap V2 fork on Hedera and keeps the V2 oracle state: `price0CumulativeLast` and `price1CumulativeLast` are the sum of the pair's price times the seconds each price stood (UQ112x112), updated on every swap and liquidity change, and `getReserves()` returns the second of that last update as its third value. A pool that has not traded since its liquidity was added reads 0, which is why the engine extends the stored value to the current second with the current reserves (`stored + spot x (now - lastUpdate)`, the UniswapV2OracleLibrary pattern) instead of trusting the stored number alone. Measured on the earlier engine's pair: `price1CumulativeLast` 4.05e34 against a current price of 6.0e29, which is 67,000 seconds of accumulation, and a last-update second 7.5 hours before the read.
 
-**In FurnaceEngine.** The engine never reads them. Impact math uses spot reserves, which are exact for a constant-product trade, and the ceiling uses the Chainlink USD price. A fresh pool works on its first buyback.
+**In FurnaceEngine.** The engine tracks the cumulative of HBAR per token (`price0` when the token is `token0`, else `price1`). `seedLiquidity` and every judged `buyback()` store a snapshot of it; the average price since the snapshot is `(cumulativeNow - snapshot) / seconds`. A buy is refused while spot sits more than `maxTwapDeviationBps` above that average, so a pool moved just before a run cannot be bought into. Impact math still uses spot reserves, which are exact for a constant-product trade, and the ceiling uses the Chainlink USD price.
 
-**Reproduce.** On the engine's pair, which has traded, both are non-zero:
+**Reproduce.** The accumulators are non-zero on a pair that has traded, and the engine reports the average it derives from them:
 
 ```bash
 cast call $PAIR "price0CumulativeLast()(uint256)" --rpc-url $RPC | n
 cast call $PAIR "price1CumulativeLast()(uint256)" --rpc-url $RPC | n
+cast call $PAIR "getReserves()(uint112,uint112,uint32)" --rpc-url $RPC       # third value: the pair's last update second
+E2=0x8B674665F2b8B7e5220D5F8e466a4B0eB982Db25
+cast call $E2 "twap()(uint8,uint256,uint256,uint256)" --rpc-url $RPC         # state, average (tinybar per whole token), window s, deviation bps
 ```
 
-**Source.** Our measurement on the probe pair; the engine's pair confirms the non-zero side.
+**Source.** Our measurement on the engine's pairs; the pattern is the UniswapV2 oracle.
 
 ## HTS refuses an allowance above max supply
 

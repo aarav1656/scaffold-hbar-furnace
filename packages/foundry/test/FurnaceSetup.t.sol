@@ -544,11 +544,13 @@ contract FurnaceSetupTest is FurnaceBase {
             ),
             (string[])
         );
-        string[17] memory expected = [
+        string[19] memory expected = [
             "buyback",
             "claimTeamAllocation",
             "createPool",
+            "depositRevenue",
             "initialize",
+            "rearm",
             "renounceOwnership",
             "runScheduled",
             "seedLiquidity",
@@ -563,10 +565,10 @@ contract FurnaceSetupTest is FurnaceBase {
             "stopAutomation",
             "transferOwnership"
         ];
-        assertEq(names.length, 17, "a new state-changing function needs a security review");
+        assertEq(names.length, 19, "a new state-changing function needs a security review");
         for (uint256 i; i < names.length; ++i) {
             bool known;
-            for (uint256 j; j < 17; ++j) {
+            for (uint256 j; j < 19; ++j) {
                 if (keccak256(bytes(names[i])) == keccak256(bytes(expected[j]))) known = true;
             }
             assertTrue(known, names[i]);

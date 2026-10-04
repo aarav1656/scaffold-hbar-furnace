@@ -19,7 +19,8 @@ import { AggregatorV3Interface } from "./interfaces/AggregatorV3Interface.sol";
 /// sent to it is protocol revenue: on its own Hedera Schedule Service schedule the engine spends it buying the token
 /// back, within a daily USD budget priced by Chainlink, in lots of bounded size with a minimum gap between buys, never
 /// past a USD price ceiling, never moving the pool by more than a set price impact and never while the pool's spot
-/// price sits above its own time-weighted average, then burns what it bought. Supply is enforced by the network, so the burn is
+/// price sits above its own time-weighted average, then burns what it bought. Once the owner sets a minimum gap
+/// anyone may trigger a buy, and anyone may re-book a schedule chain that has died. Supply is enforced by the network, so the burn is
 /// verifiable on any mirror node.
 /// @dev The owner has no function that moves HBAR, LP tokens or bought tokens out of the engine. HBAR leaves only
 /// through the HTS and pair creation fees, the router and the gas of the engine's own schedules.
@@ -47,6 +48,7 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
         uint256 reserveHbar;
         uint256 reserveToken;
         uint256 cumulative;
+        uint256 twapQ;
     }
 
     struct Config {
@@ -121,8 +123,14 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
     /// @notice The spot-versus-average bound may be no tighter than 0.5% and no looser than 20%.
     uint256 public constant MIN_TWAP_DEVIATION_BPS = 50;
     uint256 public constant MAX_TWAP_DEVIATION_BPS = 2000;
-    /// @notice An average over fewer seconds than this is not an average: the run is skipped.
-    uint256 public constant MIN_TWAP_WINDOW = 60;
+    /// @notice An average over fewer seconds than this is not an average: the run is skipped. The longer the window,
+    /// the longer a price move has to be held, against arbitrage, to pull the average along with it.
+    uint256 public constant MIN_TWAP_WINDOW = 15 minutes;
+    /// @notice The most pool fee the average-price floor on a swap's output allows for, in basis points. SaucerSwap
+    /// V1 charges 30.
+    uint256 public constant POOL_FEE_ALLOWANCE_BPS = 100;
+    /// @notice How long a booked schedule may be overdue before anyone may book a replacement.
+    uint256 public constant REARM_GRACE = 10 minutes;
     /// @notice A self-rescheduling call under 3M gas runs once, fails to book its successor and still reports
     /// SUCCESS. Measured on testnet.
     uint256 public constant MIN_SCHEDULED_GAS = 3_000_000;
@@ -195,6 +203,7 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
     event TeamAllocationClaimed(address indexed to, uint256 amount);
     event RevenueReceived(address indexed from, uint256 amount);
     event Burned(uint256 hbarIn, uint256 tokensBurned, uint256 priceHbar, uint256 priceUsd, uint256 supplyAfter);
+    event RevenueTagged(bytes32 indexed source, address indexed from, uint256 amount);
     event BuybackSkipped(Skip reason);
     event DailyBudgetSet(uint256 dailyBudgetUsd);
     event MaxImpactSet(uint256 maxImpactBps);
@@ -209,6 +218,7 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
     event BookingFailed(int64 responseCode);
     event ScheduledRun(uint256 tokensBurned);
     event ScheduledRunFailed(bytes reason);
+    event Rearmed(address indexed stale, address indexed replacement);
 
     error AlreadyInitialized();
     error NotInitialized();
@@ -226,15 +236,13 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
     error NothingBought();
     error AllocationBreach();
     error NotOwnerOrSelf();
+    error BuybackRefused(Skip reason);
+    error AutomationOff();
+    error ScheduleLive(uint256 nextRunAt);
     error OnlySelf();
     error AutomationActive();
     error BadInterval(uint256 interval);
     error ScheduleFailed(int64 responseCode);
-
-    modifier onlyOwnerOrSelf() {
-        if (msg.sender != owner() && msg.sender != address(this)) revert NotOwnerOrSelf();
-        _;
-    }
 
     constructor(Config memory config) Ownable(msg.sender) {
         if (
@@ -266,6 +274,13 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
     /// @notice HBAR sent here is protocol revenue. Everything above `fuelReserve` is available to buybacks.
     receive() external payable {
         emit RevenueReceived(msg.sender, msg.value);
+    }
+
+    /// @notice Revenue with its origin on the record: `source` is a label such as `bytes32("swap-fees")`. The HBAR
+    /// is revenue like any other; the event lets anyone total the revenue by source.
+    function depositRevenue(bytes32 source) external payable {
+        if (msg.value == 0) revert ZeroAmount();
+        emit RevenueTagged(source, msg.sender, msg.value);
     }
 
     // ---------------------------------------------------------------- setup
@@ -419,12 +434,18 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
 
     // ---------------------------------------------------------------- buyback
 
-    /// @notice Spends revenue buying the token back and burns what it bought. The owner may call it any time; the
-    /// engine calls it on its own schedule. Hedera has no public mempool, so the exposure of a scheduled buy is its
-    /// known time, which is why the price impact cap, the ceiling and the average-price bound every run.
+    /// @notice Spends revenue buying the token back and burns what it bought. The owner may call it any time and the
+    /// engine calls it on its own schedule. While `minGapSeconds` is set anyone may call it, and the gap rate-limits
+    /// them: a call from anyone else that would not spend reverts `BuybackRefused` and changes nothing, so an outsider
+    /// can trigger a buy but can neither fill the logs with skips nor move the price snapshot. Hedera has no public
+    /// mempool, so the exposure of a buy is its known time, which is why the price impact cap, the ceiling and the
+    /// average-price bound every run.
     /// @return tokensBurned The tokens bought and burned, 0 when the run was skipped.
-    function buyback() public onlyOwnerOrSelf nonReentrant returns (uint256 tokensBurned) {
+    function buyback() public nonReentrant returns (uint256 tokensBurned) {
+        bool insider = msg.sender == owner() || msg.sender == address(this);
+        if (!insider && minGapSeconds == 0) revert NotOwnerOrSelf();
         Plan memory plan = _plan();
+        if (!insider && plan.skip != Skip.None) revert BuybackRefused(plan.skip);
         // Every run that gets as far as judging the price moves the snapshot, so the next average is measured from
         // here. A run inside the gap is refused before that and leaves it alone.
         if (plan.skip != Skip.NotReady && plan.skip != Skip.TooSoon) _snapshot(plan.cumulative);
@@ -447,7 +468,12 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
         address[] memory path = new address[](2);
         path[0] = whbar;
         path[1] = token;
-        uint256 minOut = router.getAmountsOut(spend, path)[1] * (BPS - slippageBps) / BPS;
+        // The router quote comes from the pool being traded in, so it cannot see a bad price the router itself gives.
+        // The average-price floor does not depend on it: the fill must also clear what the average price, the caps
+        // and the pool fee allow.
+        uint256 minOut = Math.max(
+            router.getAmountsOut(spend, path)[1] * (BPS - slippageBps) / BPS, _averagePriceFloor(spend, plan.twapQ)
+        );
         uint256 held = IERC20(token).balanceOf(address(this));
         router.swapExactETHForTokens{ value: spend }(minOut, path, address(this), block.timestamp + 300);
         tokensBurned = IERC20(token).balanceOf(address(this)) - held;
@@ -497,6 +523,23 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
         nextRunAt = 0;
         if (pending != address(0)) HSS.deleteSchedule(pending);
         emit AutomationStopped();
+    }
+
+    /// @notice Anyone may re-book the schedule when automation is on and the booked run is gone: it never ran, or it
+    /// is more than `REARM_GRACE` overdue, as when the engine's balance could not cover the gas reservation. A live
+    /// schedule is left alone, so this cannot start a second chain. The engine pays for the new schedule's run as
+    /// usual; the caller pays only this transaction's gas.
+    function rearm() external nonReentrant {
+        if (runInterval == 0) revert AutomationOff();
+        address stale = pendingSchedule;
+        // forge-lint: disable-next-line(block-timestamp)
+        if (stale != address(0) && block.timestamp <= nextRunAt + REARM_GRACE) revert ScheduleLive(nextRunAt);
+        pendingSchedule = address(0);
+        nextRunAt = 0;
+        if (stale != address(0)) HSS.deleteSchedule(stale);
+        int64 rc = _bookNext();
+        if (rc != SUCCESS) revert ScheduleFailed(rc);
+        emit Rearmed(stale, pendingSchedule);
     }
 
     /// @notice Entry point for scheduled runs. Hedera executes a scheduled call with msg.sender set to the
@@ -643,6 +686,7 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
             p.skip = Skip.TwapDeviation;
             return p;
         }
+        p.twapQ = twapQ;
 
         p.spend = Math.min(Math.min(available, byBudget), Math.min(Math.min(byCeiling, byImpact), byLot));
     }
@@ -681,6 +725,16 @@ contract FurnaceEngine is Ownable, ReentrancyGuard {
         }
         if (twapQ == 0) return (Skip.NoTwap, 0, 0, window);
         spotQ = reserveHbar * Q112 / reserveToken;
+    }
+
+    /// The fewest tokens `spend` may buy: what it buys at the average price, less the most spot may sit above that
+    /// average, the most the price impact cap allows and a pool fee allowance. The caps already guarantee a fair fill
+    /// clears it, so a router that gives a worse price than the pool's, even one that quotes the same bad price, fails it.
+    function _averagePriceFloor(uint256 spend, uint256 twapQ) private view returns (uint256) {
+        uint256 atAverage = Math.mulDiv(spend, Q112, twapQ);
+        uint256 floor = Math.mulDiv(atAverage, BPS, BPS + maxTwapDeviationBps);
+        floor = floor * (BPS - maxImpactBps) / BPS;
+        return floor * (BPS - POOL_FEE_ALLOWANCE_BPS) / BPS;
     }
 
     /// How far `spotQ` sits above `twapQ`, in basis points rounded up so a bound is never crossed by rounding.

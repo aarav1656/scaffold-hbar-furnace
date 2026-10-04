@@ -19,7 +19,10 @@ const REVERT_TEXT: Record<string, string> = {
   BadInterval: "Interval is outside the engine's allowed range.",
   BadConfig: "The engine refused that value. Check it against the bounds shown.",
   ScheduleFailed: "Hedera refused to book the schedule. Check the engine's fuel balance.",
-  NotOwnerOrSelf: "Only the engine owner can do that.",
+  NotOwnerOrSelf: "Only the engine owner can trigger a buy until the owner sets a minimum gap.",
+  BuybackRefused: "The engine would not spend on that call, so nothing changed. The run's skip reason says why.",
+  AutomationOff: "Automation is off, so there is no schedule to re-book.",
+  ScheduleLive: "The booked run is still on its way. A replacement can be booked only once it is overdue.",
   OwnableUnauthorizedAccount: "Only the engine owner can do that.",
 };
 

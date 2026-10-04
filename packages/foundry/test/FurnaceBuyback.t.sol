@@ -130,7 +130,7 @@ contract FurnaceBuybackTest is FurnaceBase {
         _expectSkip(FurnaceEngine.Skip.NoFunds);
         assertEq(_buyback(), 0);
 
-        _pass(60);
+        _pass(MIN_WINDOW);
         _setBalance(MIN_SPEND);
         uint256 burned = _buyback();
         assertGt(burned, 0, "exactly minSpend is enough");
@@ -189,7 +189,7 @@ contract FurnaceBuybackTest is FurnaceBase {
         assertGt(firstSpend, 9e8);
         assertLt(firstSpend, 11e8);
 
-        _pass(60);
+        _pass(MIN_WINDOW);
         _buyback();
         uint256 total = start - address(engine).balance;
         assertLe(total, 15e8, "two runs together stay inside the daily budget");
@@ -382,7 +382,7 @@ contract FurnaceBuybackTest is FurnaceBase {
 
         vm.prank(owner);
         assertGt(engine.buyback(), 0);
-        _pass(60);
+        _pass(MIN_WINDOW);
         vm.prank(address(engine));
         assertGt(engine.buyback(), 0);
     }
@@ -449,7 +449,7 @@ contract FurnaceBuybackTest is FurnaceBase {
         assertEq(e.liquidityUnseeded(), 300_000e8);
 
         vm.deal(address(e), FUEL + 100e8);
-        _pass(60);
+        _pass(MIN_WINDOW);
         vm.prank(owner);
         assertGt(e.buyback(), 0);
         assertEq(IBalance(e.token()).balanceOf(address(e)), e.teamUnclaimed() + e.liquidityUnseeded());
@@ -507,7 +507,7 @@ contract FurnaceBuybackTest is FurnaceBase {
         router.setHaircutBps(SLIPPAGE_BPS);
         assertGt(_buyback(), 0, "a fill exactly slippageBps under the quote is accepted");
 
-        _pass(60);
+        _pass(MIN_WINDOW);
         router.setHaircutBps(SLIPPAGE_BPS + 1);
         vm.prank(owner);
         vm.expectRevert("INSUFFICIENT_OUTPUT_AMOUNT");

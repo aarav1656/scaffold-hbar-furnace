@@ -6,8 +6,9 @@ import { formatUnits } from "viem";
 import type { Snapshot } from "~~/hooks/furnace/useEngine";
 import { useTx, useWalletReady } from "~~/hooks/furnace/useTx";
 import { ENGINE_ADDRESS, GAS_FLOOR, WEIBAR_PER_TINYBAR } from "~~/utils/furnace/constants";
-import { fmtUnits, parseAmount, shortAddress } from "~~/utils/furnace/format";
+import { fmtShare, fmtUnits, parseAmount, shortAddress } from "~~/utils/furnace/format";
 import { hashscan } from "~~/utils/furnace/hedera";
+import { revenueBySource } from "~~/utils/furnace/revenue";
 
 /** Anyone can point revenue at the engine: a plain HBAR transfer to its address. */
 export function RevenuePanel({ snap }: { snap: Snapshot }) {
@@ -16,6 +17,8 @@ export function RevenuePanel({ snap }: { snap: Snapshot }) {
   const tx = useTx();
   const [amount, setAmount] = useState("");
   const [sent, setSent] = useState<string | null>(null);
+  const sources = revenueBySource(engine.events.data?.events ?? []);
+  const total = sources.reduce((sum, row) => sum + row.amount, 0n);
 
   const tiny = parseAmount(amount, 8);
   const weibar = tiny === null ? null : tiny * WEIBAR_PER_TINYBAR;
@@ -100,6 +103,28 @@ export function RevenuePanel({ snap }: { snap: Snapshot }) {
           </button>
         </WalletGate>
       </div>
+      {sources.length > 0 && (
+        <div className="mt-6">
+          <h3 className="m-0 text-sm font-medium">Revenue by source</h3>
+          <table className="mt-2 w-full text-sm">
+            <tbody>
+              {sources.map(row => (
+                <tr key={row.source} className="border-t border-base-300">
+                  <td className="py-1.5 pr-3">{row.source}</td>
+                  <td className="py-1.5 pr-3 text-right font-mono tabular-nums">{fmtUnits(row.amount, 8, 4)} HBAR</td>
+                  <td className="py-1.5 text-right text-xs text-base-content/60">
+                    {total > 0n ? fmtShare(row.amount, total, 1) : ""} · {row.deposits}{" "}
+                    {row.deposits === 1 ? "deposit" : "deposits"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="m-0 mt-2 text-xs text-base-content/60">
+            Deposits made with <code>depositRevenue(source)</code> carry their label; plain transfers read as untagged.
+          </p>
+        </div>
+      )}
       <p className="m-0 mt-3 text-xs text-base-content/60">
         Engine <ExternalLink href={hashscan.contract(ENGINE_ADDRESS)}>{shortAddress(ENGINE_ADDRESS)}</ExternalLink>
       </p>

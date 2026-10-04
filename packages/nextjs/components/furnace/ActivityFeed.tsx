@@ -6,6 +6,7 @@ import { useNow } from "~~/hooks/furnace/useNow";
 import { ENGINE_ABI, SKIP_REASONS, SKIP_TEXT } from "~~/utils/furnace/constants";
 import { fmtAgo, fmtBps, fmtDuration, fmtUnits, fmtUsd, fmtUsdPrice, shortAddress } from "~~/utils/furnace/format";
 import { evmToEntityId, hashscan } from "~~/utils/furnace/hedera";
+import { sourceLabel } from "~~/utils/furnace/revenue";
 import type { EngineEvent } from "~~/utils/furnace/mirror";
 
 type Args = Record<string, any>;
@@ -20,6 +21,8 @@ const LABELS: Record<string, string> = {
   AutomationStarted: "Automation on",
   AutomationStopped: "Automation off",
   RevenueReceived: "Revenue",
+  RevenueTagged: "Revenue",
+  Rearmed: "Schedule re-booked",
   Initialized: "Token created",
   PoolCreated: "Pool created",
   LiquiditySeeded: "Liquidity seeded",
@@ -75,6 +78,10 @@ function describe(ev: EngineEvent, snap: Snapshot): React.ReactNode {
       return "Automation stopped and the pending schedule was deleted.";
     case "RevenueReceived":
       return `${shortAddress(a.from)} sent ${fmtUnits(a.amount, 8, 4)} HBAR to the engine.`;
+    case "RevenueTagged":
+      return `${shortAddress(a.from)} sent ${fmtUnits(a.amount, 8, 4)} HBAR to the engine as ${sourceLabel(a.source)}.`;
+    case "Rearmed":
+      return `${shortAddress(a.replacement)} was booked in place of an overdue schedule.`;
     case "Initialized":
       return `Created ${symbol} with a supply of ${fmtUnits(a.totalSupply, d, 0)}, ${fmtUnits(a.liquidityAllocation, d, 0)} of it reserved for the pool.`;
     case "PoolCreated":

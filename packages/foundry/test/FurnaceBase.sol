@@ -54,6 +54,8 @@ abstract contract FurnaceBase is Test {
     uint256 internal constant TWAP_DEVIATION_BPS = 500;
     /// How long the pool has stood at its seed price when `_ready()` hands over: one hour of TWAP history.
     uint256 internal constant POOL_AGE = 1 hours;
+    /// The shortest time-weighted average the engine trusts: `FurnaceEngine.MIN_TWAP_WINDOW`.
+    uint256 internal constant MIN_WINDOW = 15 minutes;
 
     address internal owner = makeAddr("owner");
     address internal alice = makeAddr("alice");

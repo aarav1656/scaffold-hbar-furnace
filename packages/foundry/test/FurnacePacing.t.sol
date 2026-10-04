@@ -114,7 +114,7 @@ contract FurnacePacingTest is FurnaceBase {
     function test_gap_isOffByDefault() public {
         assertEq(engine.minGapSeconds(), 0);
         _buyback();
-        _pass(60);
+        _pass(MIN_WINDOW);
         assertEq(uint8(_skip()), uint8(FurnaceEngine.Skip.None));
     }
 
@@ -148,7 +148,7 @@ contract FurnacePacingTest is FurnaceBase {
         assertEq(engine.lastBuyAt(), 0);
         vm.prank(owner);
         engine.setDailyBudgetUsd(DAILY_BUDGET_USD);
-        _pass(60);
+        _pass(MIN_WINDOW);
         assertEq(uint8(_skip()), uint8(FurnaceEngine.Skip.None), "no spend, so no gap");
     }
 

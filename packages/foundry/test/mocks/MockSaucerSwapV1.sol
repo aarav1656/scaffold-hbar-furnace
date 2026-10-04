@@ -134,6 +134,8 @@ contract MockV1Router {
     MockV1Factory public immutable factory;
     address public immutable whbar;
     uint256 public haircutBps;
+    /// Makes the router give a worse price than its pool: the quote and the fill both come out this much lower.
+    uint256 public priceSkewBps;
     uint256 public lastSwapValue;
     uint256 public swapCount;
     /// When set the swap takes the HBAR and delivers nothing, to play a router that ignores minimum output.
@@ -150,6 +152,10 @@ contract MockV1Router {
 
     function setHaircutBps(uint256 value) external {
         haircutBps = value;
+    }
+
+    function setPriceSkewBps(uint256 value) external {
+        priceSkewBps = value;
     }
 
     function addLiquidityETH(
@@ -203,7 +209,7 @@ contract MockV1Router {
         require(rHbar > 0 && rToken > 0, "INSUFFICIENT_LIQUIDITY");
         amounts = new uint256[](2);
         amounts[0] = amountIn;
-        amounts[1] = amountIn * 997 * rToken / (rHbar * 1000 + amountIn * 997);
+        amounts[1] = amountIn * 997 * rToken / (rHbar * 1000 + amountIn * 997) * (BPS - priceSkewBps) / BPS;
     }
 
     function swapExactETHForTokens(uint256 amountOutMin, address[] calldata path, address to, uint256 deadline)

@@ -58,8 +58,6 @@ contract FurnaceTwapTest is FurnaceBase {
         assertEq(engine.twapCumulative(), cumulative);
     }
 
-    uint256 internal constant MIN_WINDOW = 60;
-
     // ---------------------------------------------------------------- too-short windows
 
     function test_windowOneSecondShortOfTheMinimumSkips() public {
