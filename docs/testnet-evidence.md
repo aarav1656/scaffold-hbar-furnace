@@ -1,6 +1,6 @@
 # Testnet evidence
 
-**5 burns executed by the Hedera network on the engine's own schedule, 0 triggered by a person; supply 1,000,000 to 894,301.52857744 FURN (10.57% burned).** Recount it:
+**3 burns executed by the Hedera network on the engine's own schedule, 0 triggered by a person; supply 1,000,000 to 959,430.9642213 FURN (4.06% burned), plus two refusals on chain: a buy TooSoon inside the minimum gap and a buy refused as TwapDeviation right after a swap moved the pool.** Counted from the mirror node on engine v2 at 2026-10-04 20:28 UTC. The owner's first `buyback()` is the only burn with `scheduled: false`. Engine v1, the earlier deployment, keeps burning on its own schedule: 5 scheduled burns, 10.57% of its supply.
 
 ```bash
 M=https://testnet.mirrornode.hedera.com/api/v1; E=0x706947eCC0411bAdeF790282bb89b80126357D9D
@@ -12,6 +12,56 @@ curl -s $M/tokens/0.0.10840036 | jq -r .total_supply                            
 Every transaction below is on Hedera testnet, read from the mirror node and Hashio on 2026-10-04. Each row says what it proves and each section carries commands that re-check the post-condition. A transaction hash proves the network accepted a call. The check beside it reads the state the call was supposed to produce.
 
 The engine is one deployment of `FurnaceEngine`. It created its own token, made its own SaucerSwap V1 pair, and has burned six times: once on a manual `buyback()`, and five times on schedules it booked for itself. The counts below are read from the mirror node on 2026-10-04 at 14:29 UTC. `yarn foundry:live` runs the same flows from a fresh deploy and prints a HashScan link per step.
+
+## Engine v2 (canonical)
+
+| Thing | Value |
+| --- | --- |
+| FurnaceEngine v2 | `0x3249617e95785640140A05f55Fd9c798F0E116Df` [0.0.10860653](https://hashscan.io/testnet/contract/0x3249617e95785640140A05f55Fd9c798F0E116Df), Sourcify `exact_match`, runtime 18,209 bytes |
+| FURN | `0x0000000000000000000000000000000000A5B86E` token [0.0.10860654](https://hashscan.io/testnet/token/0.0.10860654): 1,000,000 FURN, 8 decimals, finite supply, the engine as treasury, no admin, wipe, freeze, pause or KYC key |
+| SaucerSwap V1 pair | `0xfa7511E92d54c29E469A88aE67334b7b1c2C0806` [0.0.10860656](https://hashscan.io/testnet/contract/0xfa7511E92d54c29E469A88aE67334b7b1c2C0806), LP token [0.0.10860657](https://hashscan.io/testnet/token/0.0.10860657) held by the engine |
+| Owner | `0x11Cf661848D52aEdF638658E6b68762549f74a0C` |
+| Policy | daily budget $5.00, lot $0.30, minimum gap 900 s, price bound 5% above the pair average, impact cap 5%, slippage 3%, fuel reserve 25 HBAR, schedule every 2100 s |
+| Setup | initialize [tx](https://hashscan.io/testnet/transaction/0x6b033b51e782ba9a0bcaf24e1a70915ba631e9140113af7145bb6bdd3d27a47d), createPool [tx](https://hashscan.io/testnet/transaction/0xd578043aaf37f50332d419133bca9e396c937da045bdaf1da5549209f484745e), seedLiquidity 100 HBAR [tx](https://hashscan.io/testnet/transaction/0xe20c87179b933a78b0a9d67e929838653d82f2d9c99409421ee9d72f060441e1), plain revenue 25 HBAR [tx](https://hashscan.io/testnet/transaction/0x2eea7ea27960bec02aee3dd60780dfcc433c95f77fbaadf49a67dfd55bcbc010), tagged revenue `depositRevenue("swap-fees")` 40 HBAR [tx](https://hashscan.io/testnet/transaction/0x102224a1d7d1db4dcd7ce9e0231880fc1638392d41e55f5f0f38fc6f0b17f37b), startAutomation [tx](https://hashscan.io/testnet/transaction/0xf1ab98a0e05ef738f2fea4550c8a8b1680e5698d3039076eabc693ea613719d9) |
+
+Burns, read from the engine's `Burned` logs and the transaction each came from:
+
+| Event | Consensus time | Scheduled | HBAR spent (tinybar) | FURN burned (raw) | Supply after | Link |
+| --- | --- | --- | --- | --- | --- | --- |
+| Owner buyback() | 1791139225.382740220 | false | 292,608,047 | 1,133,843,256,835 | 98,866,156,743,165 | [tx](https://hashscan.io/testnet/transaction/1791139225.382740220) |
+| Network-triggered burn | 1791141365.032140514 | true | 290,773,551 | 1,064,714,082,776 | 97,801,442,660,389 | [tx](https://hashscan.io/testnet/transaction/1791141365.032140514) |
+| Network-triggered burn | 1791143464.008715208 | true | 289,311,558 | 1,002,921,300,328 | 96,798,521,360,061 | [tx](https://hashscan.io/testnet/transaction/1791143464.008715208) |
+| Network-triggered burn | 1791145563.042153208 | true | 289,311,558 | 855,424,937,931 | 95,943,096,422,130 | [tx](https://hashscan.io/testnet/transaction/1791145563.042153208) |
+
+Totals on 2026-10-04 20:28 UTC: `totalBurned()` 4,056,903,577,870, mirror `total_supply` 95,943,096,422,130, which sum to 100,000,000,000,000 (4.057% burned). `totalSpentHbar()` 1,162,004,714 tinybar. The next run is booked for consensus second 1791147662.
+
+Refusals, read from the engine's `BuybackSkipped` logs. Each is a successful transaction with no `Burned` log and no change in the engine's HBAR beyond gas:
+
+| Refusal | Consensus time | Reason | Burned | Link |
+| --- | --- | --- | --- | --- |
+| `BuybackSkipped(TooSoon)` | 1791139238.687629508 | inside the 900 s minimum gap, 13 seconds after the manual burn | 0 | [tx](https://hashscan.io/testnet/transaction/1791139238.687629508) |
+| `BuybackSkipped(TwapDeviation)` | 1791144395.571796104 | spot 11.30% above the pair average after a 6 HBAR swap, bound 5% | 0 | [tx](https://hashscan.io/testnet/transaction/1791144395.571796104) |
+
+The second refusal follows a [6 HBAR swap](https://hashscan.io/testnet/transaction/0x254c92f73c72060b953995a311428b7d4db4afa380367bc4886bdd84b5cc5dd8) by the deployer through the SaucerSwap router, which moved spot 11.30% above the pair's average price since the engine's last snapshot (`twap()` read 0, 29553, 922, 1130 after the swap: state, average in tinybar per whole token, window in seconds, deviation in basis points). The engine's total burned before and after was 3,201,478,639,939 and its balance 63.7516 HBAR both times.
+
+Revenue by source, from the `RevenueReceived` and `RevenueTagged` logs: 25 HBAR untagged, 40 HBAR tagged `swap-fees`.
+
+Re-check all of it with one command: `bash scripts/verify-evidence.sh` prints a PASS or FAIL row per claim for engine v2 and for engine v1.
+
+### Engine v2 re-check
+
+```bash
+E2=0x3249617e95785640140A05f55Fd9c798F0E116Df
+M=https://testnet.mirrornode.hedera.com/api/v1
+curl -s $M/tokens/0.0.10860654 | jq -r .total_supply                                       # 95943096422130
+cast call $E2 "totalBurned()(uint256)" --rpc-url https://testnet.hashio.io/api            # 4056903577870
+cast call $E2 "twap()(uint8,uint256,uint256,uint256)" --rpc-url https://testnet.hashio.io/api
+curl -s "$M/contracts/$E2/results/logs?order=asc&limit=100" | jq -r '.logs[]|select(.topics[0]=="0xd04c73a674398883618b0ba9cbd53730a202476c36122338ce8a7df9ac26cdb5")|"\(.timestamp) \(.data)"'   # 6 TooSoon, 10 TwapDeviation
+```
+
+## Engine v1, the earlier deployment
+
+Everything below records engine v1 `0x706947eCC0411bAdeF790282bb89b80126357D9D`, deployed first and left running on its own 6 hour schedule. Its commands run unchanged.
 
 ## Setup for every command
 

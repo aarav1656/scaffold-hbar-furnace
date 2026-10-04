@@ -1,17 +1,17 @@
 # Furnace
 
-A buyback-and-burn engine for Hedera tokens, as a [Scaffold-HBAR](https://docs.hedera.com/solutions/tools/scaffold-hbar/index) template. A token team sends protocol revenue (HBAR) to `FurnaceEngine`. On a Hedera Schedule Service schedule the engine books for itself, it buys the team's HTS token back on SaucerSwap V1 inside a Chainlink-priced USD daily budget, never above a USD price ceiling, never moving the pool by more than a set price impact, then burns what it bought with the HTS supply key it holds. The token's `total_supply` falls on the mirror node, where anyone can read it.
+A buyback-and-burn engine for Hedera tokens, as a [Scaffold-HBAR](https://docs.hedera.com/solutions/tools/scaffold-hbar/index) template. A token team sends protocol revenue (HBAR) to `FurnaceEngine`. On a Hedera Schedule Service schedule the engine books for itself, it buys the team's HTS token back on SaucerSwap V1 inside a Chainlink-priced USD daily budget, in lots of bounded size with a minimum gap between buys, never above a USD price ceiling, never moving the pool by more than a set price impact and never while the pool's price sits above its own time-weighted average, then burns what it bought with the HTS supply key it holds. The token's `total_supply` falls on the mirror node, where anyone can read it.
 
-**5 burns executed by the Hedera network on the engine's own schedule, 0 triggered by a person; supply 1,000,000 to 894,301.52857744 FURN (10.57% burned).** Counted from the mirror node on 2026-10-04 at 14:29 UTC. A sixth burn, the owner's first `buyback()`, is the only one with `scheduled: false`.
+**3 burns executed by the Hedera network on the engine's own schedule, 0 triggered by a person; supply 1,000,000 to 959,430.9642213 FURN (4.06% burned), plus two refusals on chain: a buy TooSoon inside the minimum gap and a buy refused as TwapDeviation right after a swap moved the pool.** Counted from the mirror node on engine v2 at 2026-10-04 20:28 UTC. The owner's first `buyback()` is the only burn with `scheduled: false`. Engine v1, the earlier deployment, keeps burning on its own schedule: 5 scheduled burns, 10.57% of its supply.
 
 ```bash
-M=https://testnet.mirrornode.hedera.com/api/v1; E=0x706947eCC0411bAdeF790282bb89b80126357D9D
+M=https://testnet.mirrornode.hedera.com/api/v1; E=0x3249617e95785640140A05f55Fd9c798F0E116Df
 curl -s "$M/contracts/$E/results/logs?order=asc&limit=100" | jq -r '.logs[]|select(.topics[0]|startswith("0xe6d083b0"))|.timestamp' |
-  while read ts; do curl -s "$M/transactions?timestamp=$ts" | jq -r '.transactions[0].scheduled'; done | sort | uniq -c   # 5 true, 1 false
-curl -s $M/tokens/0.0.10840036 | jq -r .total_supply                                                               # 89430152857744 (8 decimals)
+  while read ts; do curl -s "$M/transactions?timestamp=$ts" | jq -r '.transactions[0].scheduled'; done | sort | uniq -c   # 3 true, 1 false
+curl -s $M/tokens/0.0.10860654 | jq -r .total_supply                                                               # 95943096422130 (8 decimals)
 ```
 
-![The Furnace dashboard on Hedera testnet: total supply 894,301.53 FURN of 1,000,000, 105,698.47 FURN burned (10.56% of max supply, 6 buybacks), 9.0094 HBAR spent buying, and a stepped supply chart that falls at each burn](docs/images/dashboard.png)
+![The Furnace dashboard on Hedera testnet, shown on the earlier engine: total supply 894,301.53 FURN of 1,000,000, 105,698.47 FURN burned (10.56% of max supply, 6 buybacks), 9.0094 HBAR spent buying, and a stepped supply chart that falls at each burn](docs/images/dashboard.png)
 
 Contents: [Make it your token's buyback engine](#make-it-your-tokens-buyback-engine) | [Verify the claims](#verify-the-claims-yourself) | [How the pieces connect](#how-the-pieces-connect) | [Quickstart](#quickstart) | [How it works](#how-it-works) | [Proven on testnet](#proven-on-hedera-testnet) | [Customize](#customize) | [Deploy to mainnet](#deploy-to-mainnet) | [Testing](#testing)
 
@@ -21,9 +21,10 @@ Contents: [Make it your token's buyback engine](#make-it-your-tokens-buyback-eng
 - Hedera services: HTS (token creation, `burnToken`, supply key held by the engine), Hedera Schedule Service HIP-1215 (the engine schedules its own runs). Ecosystem: SaucerSwap V1 (pool and swaps), Chainlink HBAR/USD (USD budget).
 - Scaffold: `npm create scaffold-hbar@latest -- --template aarav1656/scaffold-hbar-furnace`
 - Reproduce everything on testnet with a funded key in `packages/foundry/.env`: `yarn foundry:live` (token, pool, manual burn, network-triggered burn, mirror-node assertions).
-- Proof 1, a burn nobody called: [network-executed scheduled run](https://hashscan.io/testnet/transaction/1791020653.144458104), `CONTRACTCALL`, `scheduled: true`, paid by the engine, emitting `Burned`.
-- Proof 2, supply falls on the mirror node: [token 0.0.10840036](https://hashscan.io/testnet/token/0.0.10840036) `total_supply` went 98,005,700,860,434 to 96,110,832,443,647 in that run, exactly the 1,894,868,416,787 burned, and stands at 89,430,152,857,744 after five scheduled burns.
-- Offline check: `yarn foundry:test` runs 149 tests with no network.
+- Proof 1, a burn nobody called: [network-executed scheduled run](https://hashscan.io/testnet/transaction/1791141365.032140514) on engine v2, `CONTRACTCALL`, `scheduled: true`, paid by the engine, emitting `Burned`.
+- Proof 2, supply falls on the mirror node: [token 0.0.10860654](https://hashscan.io/testnet/token/0.0.10860654) `total_supply` stands at 95,943,096,422,130 after 3 scheduled burns and one manual one, exactly 100,000,000,000,000 minus the 4,056,903,577,870 burned.
+- Proof 3, a pool moved right before a buy is refused: [swap](https://hashscan.io/testnet/transaction/0x254c92f73c72060b953995a311428b7d4db4afa380367bc4886bdd84b5cc5dd8) then [buyback](https://hashscan.io/testnet/transaction/0xaaeb7948bac3f9239d153fc77e40ab5a6a5f46a723844667c70bf1affd8beb82), `BuybackSkipped(TwapDeviation)`, 0 burned, engine balance unchanged.
+- Offline check: `yarn foundry:test` runs 269 tests with no network.
 
 The `--` matters with `npm create`: without it npm keeps `--template` for itself. `npx create-scaffold-hbar@latest --template aarav1656/scaffold-hbar-furnace` is equivalent.
 
@@ -223,7 +224,8 @@ After that, HBAR sent to the engine is revenue. `buyback()` runs on demand for t
 
 | What | Evidence |
 | --- | --- |
-| FurnaceEngine | [0.0.10839961](https://hashscan.io/testnet/contract/0.0.10839961), `0x706947eCC0411bAdeF790282bb89b80126357D9D` |
+| FurnaceEngine v2 (canonical) | [0.0.10860653](https://hashscan.io/testnet/contract/0x3249617e95785640140A05f55Fd9c798F0E116Df), `0x3249617e95785640140A05f55Fd9c798F0E116Df`, Sourcify exact match |
+| FurnaceEngine v1 (earlier deployment) | [0.0.10839961](https://hashscan.io/testnet/contract/0.0.10839961), `0x706947eCC0411bAdeF790282bb89b80126357D9D` |
 | Token FURN | [0.0.10840036](https://hashscan.io/testnet/token/0.0.10840036): 1,000,000 tokens, 8 decimals, finite `max_supply` 100000000000000, treasury 0.0.10839961 (the engine), supply key set, admin, wipe, freeze, pause and KYC keys all null (mirror node read) |
 | Token creation | [initialize tx](https://hashscan.io/testnet/transaction/0x48a49967751c8b124a53aff0144db7f87b13c86bc5696438767e7ae02cb96218), 232,992 gas, 20 HBAR sent and HTS keeps its creation fee |
 | Pair creation | [createPool tx](https://hashscan.io/testnet/transaction/0xc0d1579ca2a712d4e7aac065f76e62387f86434c210ee838e960f221994a486e), 6,622,028 gas, 1,995,165,050 tinybar (19.95 HBAR) pair fee through 0x168. Pair [0.0.10840039](https://hashscan.io/testnet/contract/0x2989b5a6C8856143Ea04898757F360239553Cf05), LP token [0.0.10840040](https://hashscan.io/testnet/token/0.0.10840040) |
@@ -330,9 +332,9 @@ yarn foundry:test
 yarn workspace @sh/nextjs test   # 99 frontend tests on mirror-node data captured from the live engine
 ```
 
-149 tests in five suites, none needing a network: setup (41), buyback (41), buyback with WHBAR sorting above the token (42), automation (19) and six invariants (64 runs of 40 calls each). A handler fires revenue, buybacks, policy changes, claims and automation at random while the invariants assert that the treasury always covers the unclaimed allocations, every unit of supply lost is a bought burn, liquidity never moves, the fuel reserve is never spent, no HBAR reaches the owner and the budget window never overspends its setting. A fuzz test checks that spend never exceeds the tightest cap. `FurnaceBase.sol` etches HTS, exchange rate and Schedule Service mocks and a constant-product SaucerSwap V1 at the addresses the contract calls, so `FurnaceEngine` runs unmodified.
+269 tests in eleven suites, none needing a network: setup (41), buyback (41, and 42 again with WHBAR sorting above the token), the average-price bound (24 and 25), lot size and gap (17 and 17), public buys, rearm and tagged revenue (17 and 17), automation (19) and nine invariants (64 runs of 40 calls each). A handler fires revenue, buybacks, policy changes, claims and automation at random while the invariants assert that the treasury always covers the unclaimed allocations, every unit of supply lost is a bought burn, liquidity never moves, the fuel reserve is never spent, no HBAR reaches the owner and the budget window never overspends its setting. A fuzz test checks that spend never exceeds the tightest cap. `FurnaceBase.sol` etches HTS, exchange rate and Schedule Service mocks and a constant-product SaucerSwap V1 at the addresses the contract calls, so `FurnaceEngine` runs unmodified.
 
-The suite was mutation-checked with 17 deliberate bugs, each breaking one guard (fuel reserve, impact formula, ceiling clamp, budget rounding, oracle staleness, access control, burn accounting, the 0x168 conversion, slippage floor, a withdraw function and more). Every one turned the suite red and the restored file turned it green. The list is in [docs/architecture.md](docs/architecture.md#mutation-checks).
+The suite was mutation-checked with 51 deliberate bugs, each breaking one guard (fuel reserve, impact formula, ceiling clamp, budget rounding, oracle staleness, access control, burn accounting, the 0x168 conversion, slippage floor, a withdraw function and more). Every one turned the suite red and the restored file turned it green. The list is in [docs/architecture.md](docs/architecture.md#mutation-checks).
 
 `forge fmt --check` and `forge lint` are clean. The `FurnaceEngine` runtime is 14,877 bytes against the 24,576 limit.
 
@@ -346,10 +348,10 @@ Scaffolds this template with `create-scaffold-hbar` into a temporary directory (
 
 ## Extend it with Hedera Harness
 
-`.harness/` is a [hedera-harness](https://github.com/hedera-dev/hedera-harness) recipe for the first extension a token team makes: an owner-set buyback cooldown, enforced in `_plan()` so the scheduled run, the manual buyback and the dry run agree, and shown in the Policy panel.
+`.harness/` is a [hedera-harness](https://github.com/hedera-dev/hedera-harness) recipe for the first extension a token team makes: an owner-set buyback pause, enforced in `_plan()` so the scheduled run, the manual buyback and the dry run agree, and shown in the Policy panel. The engine already carries its own gap, lot size and average-price bound, so the recipe asks for a different control.
 Run `npx hedera-harness doctor`, then `npx hedera-harness validate` for the validators alone or `npx hedera-harness run` to drive a coding agent from `.harness/prd.md`.
 The harness decides the outcome: the repo's Foundry suite, lint, types and build, a harness-owned 9-test acceptance suite, and source checks that `runScheduled` books first and never reverts and that only bought tokens burn.
-On the template as committed `validate` reports `findings=17`; with a reference implementation applied it reports `findings=0`, and four deliberate engine bugs each turn the cooldown checks red. Details in [.harness/README.md](.harness/README.md).
+On the template as committed `validate` reports `findings=15`; with a reference implementation applied it reports `findings=0`, and five deliberate engine bugs each turn the pause checks red. Details in [.harness/README.md](.harness/README.md).
 
 ## Operate it from an AI agent
 
