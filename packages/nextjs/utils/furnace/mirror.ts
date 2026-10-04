@@ -1,6 +1,6 @@
-import { VAULT_ABI } from "./constants";
+import { ENGINE_ABI } from "./constants";
 import { evmToEntityId } from "./hedera";
-import { type Address, type Hex, decodeEventLog, toEventSelector } from "viem";
+import { type Address, type Hex, decodeEventLog } from "viem";
 
 export const MIRROR_URL = process.env.NEXT_PUBLIC_HEDERA_TESTNET_MIRROR_URL || "https://testnet.mirrornode.hedera.com";
 
@@ -61,30 +61,27 @@ export type MirrorLog = {
   transaction_hash: Hex;
 };
 
-export type VaultEvent = {
+export type EngineEvent = {
   id: string;
   name: string;
   args: Record<string, unknown>;
   /** Consensus time, unix seconds. */
   at: number;
+  /** Consensus timestamp as the mirror node prints it, seconds.nanoseconds. */
+  timestamp: string;
   hash: Hex;
 };
 
-/** Newest vault logs first. The JSON-RPC getLogs on hashio is range-limited, the mirror node is not. */
-export async function fetchVaultEvents(vault: Address, limit = 25): Promise<VaultEvent[]> {
-  const { logs } = await mirrorGet<{ logs: MirrorLog[] }>(`/contracts/${vault}/results/logs?order=desc&limit=${limit}`);
-  return logs.flatMap(log => decodeVaultLog(log) ?? []);
-}
-
-/** Null for a log the vault ABI cannot decode: it is not one of the vault's events, so it gets no row. */
-function decodeVaultLog(log: MirrorLog): VaultEvent | null {
+/** Null for a log the engine ABI cannot decode: it is not one of the engine's events, so it gets no row. */
+function decodeEngineLog(log: MirrorLog): EngineEvent | null {
   try {
-    const decoded = decodeEventLog({ abi: VAULT_ABI, data: log.data, topics: log.topics as [Hex, ...Hex[]] });
+    const decoded = decodeEventLog({ abi: ENGINE_ABI, data: log.data, topics: log.topics as [Hex, ...Hex[]] });
     return {
       id: `${log.transaction_hash}-${log.index}`,
       name: decoded.eventName,
       args: (decoded.args ?? {}) as Record<string, unknown>,
       at: Number(log.timestamp.split(".")[0]),
+      timestamp: log.timestamp,
       hash: log.transaction_hash,
     };
   } catch {
@@ -92,21 +89,56 @@ function decodeVaultLog(log: MirrorLog): VaultEvent | null {
   }
 }
 
-const SCHEDULED_RUN_TOPIC = toEventSelector("ScheduledRun(bool)");
-const RUN_LOOKBACK_SECONDS = 6 * 24 * 3600;
+const PAGE_SIZE = 100;
+const MAX_PAGES = 30;
 
 /**
- * What the vault's most recent scheduled run actually cost it, in tinybar, or null if it has not run in the
- * last six days. Topic searches on the mirror node need a closed timestamp range.
+ * Every engine event, newest first, paged through the mirror node (the JSON-RPC getLogs on hashio is range-limited,
+ * the mirror node is not). The supply chart and the activity feed both read this one list. `complete` is false when
+ * the page cap cut the history short.
  */
-export async function fetchLastRunFee(vault: Address): Promise<bigint | null> {
-  const now = Math.floor(Date.now() / 1000);
-  const { logs } = await mirrorGet<{ logs: MirrorLog[] }>(
-    `/contracts/${vault}/results/logs?topic0=${SCHEDULED_RUN_TOPIC}&timestamp=gte:${now - RUN_LOOKBACK_SECONDS}&timestamp=lte:${now}&order=desc&limit=1`,
-  );
-  if (logs.length === 0) return null;
+export async function fetchEngineEvents(engine: Address): Promise<{ events: EngineEvent[]; complete: boolean }> {
+  const events: EngineEvent[] = [];
+  let path: string | null = `/contracts/${engine}/results/logs?order=desc&limit=${PAGE_SIZE}`;
+  for (let page = 0; page < MAX_PAGES && path; page++) {
+    const res: { logs: MirrorLog[]; links?: { next: string | null } } = await mirrorGet(path);
+    events.push(...res.logs.flatMap(log => decodeEngineLog(log) ?? []));
+    path = res.links?.next ? res.links.next.replace(/^\/api\/v1/, "") : null;
+  }
+  return { events, complete: path === null };
+}
+
+export type TokenInfo = {
+  token_id: string;
+  name: string;
+  symbol: string;
+  decimals: string;
+  total_supply: string;
+  max_supply: string;
+  initial_supply: string;
+  supply_type: "FINITE" | "INFINITE";
+  treasury_account_id: string;
+  /** Consensus time the token was created at, seconds.nanoseconds. */
+  created_timestamp: string;
+  admin_key: unknown;
+  wipe_key: unknown;
+  freeze_key: unknown;
+  pause_key: unknown;
+  kyc_key: unknown;
+  supply_key: unknown;
+  fee_schedule_key: unknown;
+};
+
+/** Supply and key facts of an HTS token, straight from the mirror node. */
+export const fetchTokenInfo = (token: Address) => mirrorGet<TokenInfo>(`/tokens/${evmToEntityId(token)}`);
+
+/**
+ * What the engine's most recent scheduled run actually cost it, in tinybar, or null if it has not run. A scheduled
+ * run is its own transaction on the mirror node, found by the consensus timestamp of its ScheduledRun log.
+ */
+export async function fetchRunFee(timestamp: string): Promise<bigint | null> {
   const { transactions } = await mirrorGet<{ transactions: { charged_tx_fee: number }[] }>(
-    `/transactions?timestamp=${logs[0].timestamp}`,
+    `/transactions?timestamp=${timestamp}`,
   );
   return transactions.length > 0 ? BigInt(transactions[0].charged_tx_fee) : null;
 }

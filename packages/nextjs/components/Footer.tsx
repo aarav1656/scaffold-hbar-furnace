@@ -3,8 +3,8 @@ import { HederaPortalFaucet } from "@scaffold-hbar-ui/components";
 import { hedera } from "viem/chains";
 import { SwitchTheme } from "~~/components/SwitchTheme";
 import { useTargetNetwork } from "~~/hooks/scaffold-hbar/useTargetNetwork";
-import { VAULT_ADDRESS } from "~~/utils/basket/constants";
-import { hashscan } from "~~/utils/basket/hedera";
+import { ENGINE_ADDRESS } from "~~/utils/furnace/constants";
+import { hashscan } from "~~/utils/furnace/hedera";
 
 /**
  * Site footer
@@ -27,12 +27,12 @@ export const Footer = () => {
         <ul className="menu menu-horizontal w-full">
           <div className="flex justify-center items-center gap-3 text-sm w-full text-base-content/60">
             <a
-              href={hashscan.contract(VAULT_ADDRESS)}
+              href={hashscan.contract(ENGINE_ADDRESS)}
               target="_blank"
               rel="noreferrer"
               className="link hover:text-primary"
             >
-              Vault on HashScan
+              Engine on HashScan
             </a>
             <span className="opacity-30">|</span>
             <span>

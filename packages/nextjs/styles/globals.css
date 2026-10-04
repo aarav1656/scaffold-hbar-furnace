@@ -35,15 +35,15 @@
   --color-base-200: #f2f0e9;
   --color-base-300: #dedbcf;
   --color-base-content: #1a1b1f;
-  --color-primary: #3340c8;
+  --color-primary: #b8430d;
   --color-primary-content: #ffffff;
-  --color-secondary: #e4e7fa;
+  --color-secondary: #f4e3d8;
   --color-secondary-content: #1a1b1f;
-  --color-accent: #3340c8;
+  --color-accent: #b8430d;
   --color-accent-content: #ffffff;
   --color-neutral: #1a1b1f;
   --color-neutral-content: #f2f0e9;
-  --color-info: #3340c8;
+  --color-info: #b8430d;
   --color-success: #1d7a52;
   --color-warning: #a8670e;
   --color-error: #b93636;
@@ -65,15 +65,15 @@
   --color-base-200: #101115;
   --color-base-300: #2a2b33;
   --color-base-content: #ecebe6;
-  --color-primary: #8b97ff;
-  --color-primary-content: #0d0f2b;
-  --color-secondary: #23263d;
+  --color-primary: #ff9459;
+  --color-primary-content: #1f0d03;
+  --color-secondary: #36241a;
   --color-secondary-content: #ecebe6;
-  --color-accent: #8b97ff;
-  --color-accent-content: #0d0f2b;
+  --color-accent: #ff9459;
+  --color-accent-content: #1f0d03;
   --color-neutral: #ecebe6;
   --color-neutral-content: #101115;
-  --color-info: #8b97ff;
+  --color-info: #ff9459;
   --color-success: #4cc38a;
   --color-warning: #e0a23a;
   --color-error: #f0736b;
@@ -118,26 +118,6 @@
     margin-bottom: 0.5rem;
     line-height: 1.15;
   }
-
-  /* Basket segment colors. One slot per token, in holdings() order: WHBAR first, then the legs. */
-  :root,
-  [data-theme="light"] {
-    --seg-0: #2f3b52;
-    --seg-1: #b8661a;
-    --seg-2: #13806e;
-    --seg-3: #a83a62;
-    --seg-4: #5b68b8;
-    --seg-ink: #ffffff;
-  }
-
-  [data-theme="dark"] {
-    --seg-0: #9fb0d0;
-    --seg-1: #f0a24a;
-    --seg-2: #3cc4ab;
-    --seg-3: #e0709a;
-    --seg-4: #9aa5f0;
-    --seg-ink: #0e1018;
-  }
 }
 
 :root,
@@ -161,4 +141,19 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* The supply line draws itself once when the chart mounts. */
+@keyframes draw-line {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.draw-line {
+  stroke-dasharray: 1;
+  animation: draw-line 1.2s ease-out both;
 }

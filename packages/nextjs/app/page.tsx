@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { FundView } from "~~/components/basket/FundView";
+import { FurnaceView } from "~~/components/furnace/FurnaceView";
 
 export const metadata: Metadata = {
-  title: { absolute: "Index Basket: live NAV, target against actual weights, deposit and redeem" },
+  title: { absolute: "Furnace: supply falling, budget and price ceiling, next burn, send revenue" },
 };
 
 export default function Home() {
-  return <FundView />;
+  return <FurnaceView />;
 }

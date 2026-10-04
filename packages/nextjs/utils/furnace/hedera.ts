@@ -1,6 +1,6 @@
 /**
  * Entity id behind a long-zero EVM address: 4 bytes shard, 8 bytes realm, 8 bytes number.
- * Holds for HTS tokens and schedules, not for ECDSA-aliased accounts.
+ * Holds for HTS tokens and schedules, not for ECDSA-aliased accounts or contracts deployed from one.
  */
 export function evmToEntityId(address: string): string {
   const n = BigInt(address);

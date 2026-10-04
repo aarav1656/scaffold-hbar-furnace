@@ -10,9 +10,9 @@ const plexSans = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "500", "600
 const plexMono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-plex-mono" });
 
 export const metadata = getMetadata({
-  title: "Index Basket",
+  title: "Furnace",
   description:
-    "A tokenised index fund on Hedera. Deposit HBAR, hold one share of a weighted token basket that rebalances itself on a Hedera schedule, redeem in kind.",
+    "A buyback-and-burn engine on Hedera. Send HBAR revenue and the engine buys its token back on SaucerSwap inside a USD budget and a price ceiling, then burns it on a Hedera schedule.",
 });
 
 const ScaffoldHbarApp = ({ children }: { children: React.ReactNode }) => {

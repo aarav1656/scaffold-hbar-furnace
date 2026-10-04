@@ -9,9 +9,9 @@ import {
   HRC719_ABI,
   HTS_ALREADY_ASSOCIATED,
   HTS_SUCCESS,
-} from "~~/utils/basket/constants";
-import { explainError, revertName } from "~~/utils/basket/errors";
-import { waitForContractResult } from "~~/utils/basket/mirror";
+} from "~~/utils/furnace/constants";
+import { explainError, revertName } from "~~/utils/furnace/errors";
+import { waitForContractResult } from "~~/utils/furnace/mirror";
 
 export type StepRun = { status: "signing" | "confirming" | "done" | "failed"; hash?: Hex; error?: string };
 
@@ -22,7 +22,7 @@ export type RunnableStep = {
   verify?: (hash: Hex) => Promise<void>;
 };
 
-/** Wallet readiness for writes: connected, and on the chain the vault lives on. */
+/** Wallet readiness for writes: connected, and on the chain the engine lives on. */
 export function useWalletReady() {
   const { address, chain } = useAccount();
   const { switchChain, isPending: switching } = useSwitchChain();
@@ -76,7 +76,7 @@ export function useTx() {
   };
 
   const sendValue = async (to: Address, value: bigint): Promise<Hex> =>
-    sendTransactionAsync({ to, value, chainId: CHAIN_ID, gas: GAS_FLOOR.topUp });
+    sendTransactionAsync({ to, value, chainId: CHAIN_ID, gas: GAS_FLOOR.revenue });
 
   const run = useCallback(
     async (steps: RunnableStep[]): Promise<boolean> => {
@@ -98,7 +98,7 @@ export function useTx() {
             patch(step.id, { status: "done", hash });
             // Association answers stay as the HTS response code set them: the mirror node trails consensus.
             await queryClient.invalidateQueries({
-              predicate: q => !(q.queryKey[0] === "basket" && q.queryKey[1] === "assoc"),
+              predicate: q => !(q.queryKey[0] === "furnace" && q.queryKey[1] === "assoc"),
             });
           } catch (error) {
             patch(step.id, { status: "failed", hash, error: explainError(error) });
@@ -123,7 +123,7 @@ export function useTx() {
       if (result !== "SUCCESS" || (code !== HTS_SUCCESS && code !== HTS_ALREADY_ASSOCIATED)) {
         throw new Error(`Hedera Token Service answered ${code?.toString() ?? result}. The association did not happen.`);
       }
-      queryClient.setQueryData(["basket", "assoc", address, token], "associated");
+      queryClient.setQueryData(["furnace", "assoc", address, token], "associated");
     },
   });
 

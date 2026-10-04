@@ -4,7 +4,7 @@ import React, { useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bars3Icon, BugAntIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
-import { Mark } from "~~/components/basket/Mark";
+import { Mark } from "~~/components/furnace/Mark";
 import { RainbowKitCustomConnectButton } from "~~/components/scaffold-hbar";
 import { useOutsideClick } from "~~/hooks/scaffold-hbar";
 
@@ -16,7 +16,7 @@ type HeaderMenuLink = {
 
 export const menuLinks: HeaderMenuLink[] = [
   {
-    label: "Fund",
+    label: "Furnace",
     href: "/",
   },
   {
@@ -85,7 +85,7 @@ export const Header = () => {
         </details>
         <Link href="/" passHref className="hidden lg:flex items-center gap-3 ml-4 mr-6 shrink-0">
           <Mark className="h-8 w-8" />
-          <span className="font-semibold leading-tight text-base tracking-tight">Index Basket</span>
+          <span className="font-semibold leading-tight text-base tracking-tight">Furnace</span>
         </Link>
         <ul className="hidden lg:flex lg:flex-nowrap menu menu-horizontal px-1 gap-2">
           <HeaderMenuLinks />

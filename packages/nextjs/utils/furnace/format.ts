@@ -19,8 +19,6 @@ export function fmtUnits(value: bigint, decimals: number, digits = 4, pad = fals
 /** USD amounts from the contract carry 8 decimals. */
 export const fmtUsd = (value8: bigint, digits = 2) => `$${fmtUnits(value8, 8, digits, true)}`;
 
-export const fmtPercentFromBps = (bps: number | bigint) => `${(Number(bps) / 100).toFixed(2)}%`;
-
 export function fmtDuration(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));
   const d = Math.floor(s / 86400);
@@ -45,3 +43,16 @@ export function parseAmount(input: string, decimals: number): bigint | null {
   if (frac.length > decimals) return null;
   return BigInt(whole || "0") * 10n ** BigInt(decimals) + BigInt(frac.padEnd(decimals, "0") || "0");
 }
+
+/** A price per whole token in 8-decimal USD. Sub-cent prices keep every digit the chain holds. */
+export const fmtUsdPrice = (value8: bigint) => (value8 < 1_000_000n ? `$${fmtUnits(value8, 8, 8)}` : fmtUsd(value8, 4));
+
+/** `numerator / denominator` as a percentage with `digits` places, from bigints. */
+export function fmtShare(numerator: bigint, denominator: bigint, digits = 2): string {
+  if (denominator === 0n) return "0%";
+  const scale = 10n ** BigInt(digits);
+  return `${fmtUnits((numerator * 100n * scale) / denominator, digits, digits, true)}%`;
+}
+
+/** Percent from basis points with up to two places, trimmed: 500 -> "5%", 350 -> "3.5%". */
+export const fmtBps = (bps: number | bigint) => `${fmtUnits(BigInt(bps), 2, 2)}%`;
