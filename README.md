@@ -327,6 +327,7 @@ AGENTS.md                           briefing for coding agents (CLAUDE.md loads 
 
 ```bash
 yarn foundry:test
+yarn workspace @sh/nextjs test   # 99 frontend tests on mirror-node data captured from the live engine
 ```
 
 149 tests in five suites, none needing a network: setup (41), buyback (41), buyback with WHBAR sorting above the token (42), automation (19) and six invariants (64 runs of 40 calls each). A handler fires revenue, buybacks, policy changes, claims and automation at random while the invariants assert that the treasury always covers the unclaimed allocations, every unit of supply lost is a bought burn, liquidity never moves, the fuel reserve is never spent, no HBAR reaches the owner and the budget window never overspends its setting. A fuzz test checks that spend never exceeds the tightest cap. `FurnaceBase.sol` etches HTS, exchange rate and Schedule Service mocks and a constant-product SaucerSwap V1 at the addresses the contract calls, so `FurnaceEngine` runs unmodified.
