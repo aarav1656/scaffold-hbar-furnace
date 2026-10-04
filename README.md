@@ -2,6 +2,19 @@
 
 A buyback-and-burn engine for Hedera tokens, as a [Scaffold-HBAR](https://docs.hedera.com/solutions/tools/scaffold-hbar/index) template. A token team sends protocol revenue (HBAR) to `FurnaceEngine`. On a Hedera Schedule Service schedule the engine books for itself, it buys the team's HTS token back on SaucerSwap V1 inside a Chainlink-priced USD daily budget, never above a USD price ceiling, never moving the pool by more than a set price impact, then burns what it bought with the HTS supply key it holds. The token's `total_supply` falls on the mirror node, where anyone can read it.
 
+**5 burns executed by the Hedera network on the engine's own schedule, 0 triggered by a person; supply 1,000,000 to 894,301.52857744 FURN (10.57% burned).** Counted from the mirror node on 2026-10-04 at 14:29 UTC. A sixth burn, the owner's first `buyback()`, is the only one with `scheduled: false`.
+
+```bash
+M=https://testnet.mirrornode.hedera.com/api/v1; E=0x706947eCC0411bAdeF790282bb89b80126357D9D
+curl -s "$M/contracts/$E/results/logs?order=asc&limit=100" | jq -r '.logs[]|select(.topics[0]|startswith("0xe6d083b0"))|.timestamp' |
+  while read ts; do curl -s "$M/transactions?timestamp=$ts" | jq -r '.transactions[0].scheduled'; done | sort | uniq -c   # 5 true, 1 false
+curl -s $M/tokens/0.0.10840036 | jq -r .total_supply                                                               # 89430152857744 (8 decimals)
+```
+
+![The Furnace dashboard on Hedera testnet: total supply 894,301.53 FURN of 1,000,000, 105,698.47 FURN burned (10.56% of max supply, 6 buybacks), 9.0094 HBAR spent buying, and a stepped supply chart that falls at each burn](docs/images/dashboard.png)
+
+Contents: [Make it your token's buyback engine](#make-it-your-tokens-buyback-engine) | [Verify the claims](#verify-the-claims-yourself) | [How the pieces connect](#how-the-pieces-connect) | [Quickstart](#quickstart) | [How it works](#how-it-works) | [Proven on testnet](#proven-on-hedera-testnet) | [Customize](#customize) | [Deploy to mainnet](#deploy-to-mainnet) | [Testing](#testing)
+
 **Judge quick start**
 
 - Problem: token teams have no trust-minimised way to spend protocol revenue on buybacks, and burns that park tokens in an account leave `total_supply` unchanged.
@@ -9,7 +22,7 @@ A buyback-and-burn engine for Hedera tokens, as a [Scaffold-HBAR](https://docs.h
 - Scaffold: `npm create scaffold-hbar@latest -- --template aarav1656/scaffold-hbar-furnace`
 - Reproduce everything on testnet with a funded key in `packages/foundry/.env`: `yarn foundry:live` (token, pool, manual burn, network-triggered burn, mirror-node assertions).
 - Proof 1, a burn nobody called: [network-executed scheduled run](https://hashscan.io/testnet/transaction/1791020653.144458104), `CONTRACTCALL`, `scheduled: true`, paid by the engine, emitting `Burned`.
-- Proof 2, supply falls on the mirror node: [token 0.0.10840036](https://hashscan.io/testnet/token/0.0.10840036) `total_supply` went 98,005,700,860,434 to 96,110,832,443,647 in that run, exactly the 1,894,868,416,787 burned.
+- Proof 2, supply falls on the mirror node: [token 0.0.10840036](https://hashscan.io/testnet/token/0.0.10840036) `total_supply` went 98,005,700,860,434 to 96,110,832,443,647 in that run, exactly the 1,894,868,416,787 burned, and stands at 89,430,152,857,744 after five scheduled burns.
 - Offline check: `yarn foundry:test` runs 149 tests with no network.
 
 The `--` matters with `npm create`: without it npm keeps `--template` for itself. `npx create-scaffold-hbar@latest --template aarav1656/scaffold-hbar-furnace` is equivalent.
@@ -215,9 +228,12 @@ After that, HBAR sent to the engine is revenue. `buyback()` runs on demand for t
 | Pair creation | [createPool tx](https://hashscan.io/testnet/transaction/0xc0d1579ca2a712d4e7aac065f76e62387f86434c210ee838e960f221994a486e), 6,622,028 gas, 1,995,165,050 tinybar (19.95 HBAR) pair fee through 0x168. Pair [0.0.10840039](https://hashscan.io/testnet/contract/0x2989b5a6C8856143Ea04898757F360239553Cf05), LP token [0.0.10840040](https://hashscan.io/testnet/token/0.0.10840040) |
 | Liquidity | [seedLiquidity tx](https://hashscan.io/testnet/transaction/0x4b7dc30f8d6d20227bf7ce07e30ee97c289999153e2a27f78fcdc5845a339903): 25 HBAR and 400,000 FURN. The engine holds 316,227,765,016 LP, every unit a depositor received (sqrt(2.5e9 x 4e13) less the 1,000 the pair keeps at its first mint) |
 | Manual burn | [buyback tx](https://hashscan.io/testnet/transaction/0x389b5f7eae1a05bb09d5d6bb7fafa178b53b645dd963e2d565a5bf692bf687fc): 131,578,947 tinybar (1.3158 HBAR, the impact cap) bought 1,994,299,139,566 raw FURN (19,942.99) and burned it. `total_supply` 100,000,000,000,000 to 98,005,700,860,434, a fall of exactly the amount burned |
-| Network-triggered burn | [consensus 1791020653.144458104](https://hashscan.io/testnet/transaction/1791020653.144458104): the engine's own schedule (CONTRACTCALL, `scheduled: true`, paid by the engine) spent 138,504,155 tinybar (1.3850 HBAR) and burned 1,894,868,416,787 raw FURN (18,948.68). `total_supply` 98,005,700,860,434 to 96,110,832,443,647, a fall of exactly the amount burned. No transaction of ours was sent in that window |
-| Both burns | 270,083,102 tinybar spent, 3,889,167,556,353 raw FURN burned (3.889% of supply), equal to the engine's `totalBurned()` at that point |
-| Schedule since | The 6 hour schedule has run on its own since: consensus [1791042280.004353208](https://hashscan.io/testnet/transaction/1791042280.004353208) and [1791063880.037958663](https://hashscan.io/testnet/transaction/1791063880.037958663) each burned. Read on 2026-10-04: `totalBurned()` 7,400,194,497,257 and mirror `total_supply` 92,599,805,502,743, which sum to the original 100,000,000,000,000 |
+| Scheduled burn 1 | [consensus 1791020653.144458104](https://hashscan.io/testnet/transaction/1791020653.144458104): the engine's own schedule (CONTRACTCALL, `scheduled: true`, paid by the engine) spent 138,504,155 tinybar (1.3850 HBAR) and burned 1,894,868,416,787 raw FURN (18,948.68). `total_supply` 98,005,700,860,434 to 96,110,832,443,647, a fall of exactly the amount burned. No transaction of ours was sent in that window |
+| Scheduled burn 2 | [consensus 1791042280.004353208](https://hashscan.io/testnet/transaction/1791042280.004353208): CONTRACTCALL, `scheduled: true`, paid by the engine, spent 145,793,847 tinybar (1.4579 HBAR) and burned 1,800,395,051,016 raw FURN (18,003.95). `total_supply` after: 94,310,437,392,631 |
+| Scheduled burn 3 | [consensus 1791063880.037958663](https://hashscan.io/testnet/transaction/1791063880.037958663): CONTRACTCALL, `scheduled: true`, paid by the engine, spent 153,467,207 tinybar (1.5347 HBAR) and burned 1,710,631,889,888 raw FURN (17,106.32). `total_supply` after: 92,599,805,502,743 |
+| Scheduled burn 4 | [consensus 1791085478.123850208](https://hashscan.io/testnet/transaction/1791085478.123850208): CONTRACTCALL, `scheduled: true`, paid by the engine, spent 161,544,429 tinybar (1.6154 HBAR) and burned 1,625,344,103,411 raw FURN (16,253.44). `total_supply` after: 90,974,461,399,332 |
+| Scheduled burn 5 | [consensus 1791107076.082884956](https://hashscan.io/testnet/transaction/1791107076.082884956): CONTRACTCALL, `scheduled: true`, paid by the engine, spent 170,046,767 tinybar (1.7005 HBAR) and burned 1,544,308,541,588 raw FURN (15,443.09). `total_supply` after: 89,430,152,857,744 |
+| Totals | Read on 2026-10-04 at 14:29 UTC: `totalBurned()` 10,569,847,142,256 and mirror `total_supply` 89,430,152,857,744, which sum to the original 100,000,000,000,000 (10.570% burned). `totalSpentHbar()` 900,935,352 tinybar (9.0094 HBAR) over six burns. The next run is booked for consensus second 1791128675 |
 
 Every row has a re-check command in [docs/testnet-evidence.md](docs/testnet-evidence.md). `yarn foundry:live` reproduces the loop from a fresh deploy.
 

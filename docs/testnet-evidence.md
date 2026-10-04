@@ -1,8 +1,17 @@
 # Testnet evidence
 
+**5 burns executed by the Hedera network on the engine's own schedule, 0 triggered by a person; supply 1,000,000 to 894,301.52857744 FURN (10.57% burned).** Recount it:
+
+```bash
+M=https://testnet.mirrornode.hedera.com/api/v1; E=0x706947eCC0411bAdeF790282bb89b80126357D9D
+curl -s "$M/contracts/$E/results/logs?order=asc&limit=100" | jq -r '.logs[]|select(.topics[0]|startswith("0xe6d083b0"))|.timestamp' |
+  while read ts; do curl -s "$M/transactions?timestamp=$ts" | jq -r '.transactions[0].scheduled'; done | sort | uniq -c   # 5 true, 1 false (the manual buyback)
+curl -s $M/tokens/0.0.10840036 | jq -r .total_supply                                                               # 89430152857744
+```
+
 Every transaction below is on Hedera testnet, read from the mirror node and Hashio on 2026-10-04. Each row says what it proves and each section carries commands that re-check the post-condition. A transaction hash proves the network accepted a call. The check beside it reads the state the call was supposed to produce.
 
-The engine is one deployment of `FurnaceEngine`. It created its own token, made its own SaucerSwap V1 pair, and has burned four times: once on a manual `buyback()`, and three times on schedules it booked for itself. `yarn foundry:live` runs the same flows from a fresh deploy and prints a HashScan link per step.
+The engine is one deployment of `FurnaceEngine`. It created its own token, made its own SaucerSwap V1 pair, and has burned six times: once on a manual `buyback()`, and five times on schedules it booked for itself. The counts below are read from the mirror node on 2026-10-04 at 14:29 UTC. `yarn foundry:live` runs the same flows from a fresh deploy and prints a HashScan link per step.
 
 ## Setup for every command
 
@@ -110,7 +119,7 @@ curl -s $M/tokens/0.0.10840040/balances | jq -c '.balances[]|select(.balance>0)'
 python3 -c "import math; print(math.isqrt(2500000000*40000000000000)-1000)"   # 316227765016
 ```
 
-LP minted is `sqrt(2.5e9 x 4e13) - 1000`. The 1,000 units are the minimum liquidity the pair keeps at its first mint and sit at the factory 0.0.9959. The engine's LP balance has not changed since the seed, through four burns, because the contract has no function that moves it.
+LP minted is `sqrt(2.5e9 x 4e13) - 1000`. The 1,000 units are the minimum liquidity the pair keeps at its first mint and sit at the factory 0.0.9959. The engine's LP balance has not changed since the seed, through six burns, because the contract has no function that moves it.
 
 ## 3. Revenue and the manual burn
 
@@ -140,6 +149,7 @@ while read ts d; do
   prev=$5
 done < burned.txt
 # 1791020436.051157977 hbarIn=131578947 burned=1994299139566 supplyAfter=98005700860434 fell=1994299139566 MATCH
+# ... one MATCH line per Burned event; six in all, the last at 1791107076.082884956 supplyAfter=89430152857744
 ```
 
 ## 4. Team allocation
@@ -159,9 +169,9 @@ cast call $FURN "balanceOf(address)(uint256)" $E --rpc-url $RPC | n       # 0
 cast call $E "teamUnclaimed()(uint256)" --rpc-url $RPC | n                # 0
 cast call $E "liquidityUnseeded()(uint256)" --rpc-url $RPC | n            # 0
 curl -s $M/tokens/$TID/balances | jq -c '[.balances[]|select(.balance>0)|{a:.account,b:.balance}]'
-# [{"a":"0.0.10840039","b":32599805502743},{"a":"0.0.4729347","b":60000000000000}]   read after the fourth burn
-curl -s $M/tokens/$TID | jq -r .total_supply                               # 92599805502743 = 32599805502743 + 60000000000000
-cast call $E "totalBurned()(uint256)" --rpc-url $RPC | n                  # 7400194497257 = 100000000000000 - 92599805502743
+# [{"a":"0.0.10855086","b":60000000000000},{"a":"0.0.10840039","b":29430152857744}]   read after the sixth burn
+curl -s $M/tokens/$TID | jq -r .total_supply                               # 89430152857744 = 29430152857744 + 60000000000000
+cast call $E "totalBurned()(uint256)" --rpc-url $RPC | n                  # 10569847142256 = 100000000000000 - 89430152857744
 ```
 
 ## 5. The network-triggered burn
@@ -217,7 +227,7 @@ curl -s $M/schedules/0.0.10840089 | jq -c '{schedule_id,executed_timestamp,delet
 
 ### The schedule since
 
-The 6 hour schedule has executed on its own since. Every `Burned` event is checked against the supply it left behind by the ledger loop in section 3:
+The 6 hour schedule has executed on its own four times since. Every `Burned` event is checked against the supply it left behind by the ledger loop in section 3:
 
 | Consensus timestamp | Spend (tinybar) | FURN burned (raw) | `total_supply` after | Network fee (tinybar) | Link |
 | --- | --- | --- | --- | --- | --- |
@@ -225,8 +235,10 @@ The 6 hour schedule has executed on its own since. Every `Burned` event is check
 | 1791020653.144458104 (180 s schedule) | 138,504,155 | 1,894,868,416,787 | 96,110,832,443,647 | 141,794,436 | [tx](https://hashscan.io/testnet/transaction/1791020653.144458104) |
 | 1791042280.004353208 (6 h schedule) | 145,793,847 | 1,800,395,051,016 | 94,310,437,392,631 | 140,106,407 | [tx](https://hashscan.io/testnet/transaction/1791042280.004353208) |
 | 1791063880.037958663 (6 h schedule) | 153,467,207 | 1,710,631,889,888 | 92,599,805,502,743 | 140,106,407 | [tx](https://hashscan.io/testnet/transaction/1791063880.037958663) |
+| 1791085478.123850208 (6 h schedule) | 161,544,429 | 1,625,344,103,411 | 90,974,461,399,332 | 140,106,407 | [tx](https://hashscan.io/testnet/transaction/1791085478.123850208) |
+| 1791107076.082884956 (6 h schedule) | 170,046,767 | 1,544,308,541,588 | 89,430,152,857,744 | 140,356,237 | [tx](https://hashscan.io/testnet/transaction/1791107076.082884956) |
 
-Each spend is the impact cap on the reserve the previous burn left: `2,631,578,947 x 500 / 9500` = 138,504,155 for the second burn, `2,770,083,102 x 500 / 9500` = 145,793,847 for the third, `2,915,876,949 x 500 / 9500` = 153,467,207 for the fourth.
+Each spend is the impact cap on the reserve the previous burn left: `2,631,578,947 x 500 / 9500` = 138,504,155 for the second burn, `2,770,083,102 x 500 / 9500` = 145,793,847 for the third, `2,915,876,949 x 500 / 9500` = 153,467,207 for the fourth. The fifth and sixth burns spent 161,544,429 and 170,046,767 by the same formula on the reserves their predecessors left.
 
 Re-check:
 
@@ -239,18 +251,19 @@ logs "RunBooked(address,uint256)" | jq -r '.logs[]|"\(.timestamp) \(.topics[1]) 
 # 1791020680.071202004 schedule=0.0.10840094 expiry=1791042280
 # 1791042280.004353208 schedule=0.0.10843984 expiry=1791063880
 # 1791063880.037958663 schedule=0.0.10847706 expiry=1791085478
+# ... one RunBooked per later execution; the latest read is expiry=1791128675
 
-for ts in 1791042280.004353208 1791063880.037958663; do
+for ts in 1791042280.004353208 1791063880.037958663 1791085478.123850208 1791107076.082884956; do
   curl -s "$M/transactions?timestamp=$ts" | jq -c '.transactions[0]|{name,result,scheduled,charged_tx_fee}'
 done
-# {"name":"CONTRACTCALL","result":"SUCCESS","scheduled":true,"charged_tx_fee":140106407}  (twice)
+# {"name":"CONTRACTCALL","result":"SUCCESS","scheduled":true,"charged_tx_fee":140106407}  (the first three; the sixth burn charged 140356237)
 
 cast call $E "runInterval()(uint256)" --rpc-url $RPC | n        # 21600
-cast call $E "nextRunAt()(uint256)" --rpc-url $RPC | n           # 1791085478 when read; later reads show a later run
+cast call $E "nextRunAt()(uint256)" --rpc-url $RPC | n           # 1791128675 when read (2026-10-04 14:29 UTC); later reads show a later run
 cast call $E "pendingSchedule()(address)" --rpc-url $RPC         # the schedule booked for nextRunAt
-cast call $E "totalBurned()(uint256)" --rpc-url $RPC | n         # 7400194497257 when read; only ever rises
-cast call $E "totalSpentHbar()(uint256)" --rpc-url $RPC | n      # 569344156 = 131578947 + 138504155 + 145793847 + 153467207
-cast balance $E --rpc-url $RPC --ether                           # 34.19707819 HBAR when read
+cast call $E "totalBurned()(uint256)" --rpc-url $RPC | n         # 10569847142256 when read; only ever rises
+cast call $E "totalSpentHbar()(uint256)" --rpc-url $RPC | n      # 900935352 = 131578947 + 138504155 + 145793847 + 153467207 + 161544429 + 170046767
+cast balance $E --rpc-url $RPC --ether                           # 29.07653979 HBAR when read
 ```
 
 The ledger totals above move with every later run: `totalBurned()` only rises, `total_supply` only falls, and the loop in section 3 keeps printing MATCH for each new `Burned` event. Widen `S` and `U` (at most 7 days apart) to read later windows.
