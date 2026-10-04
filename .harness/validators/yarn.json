@@ -1,8 +1,13 @@
 {
-  "name": "furnace-cooldown-commands",
-  "description": "The repo's own gates plus the two cooldown checks. Nothing here needs a secret or the network beyond installing packages.",
+  "name": "furnace-pause-commands",
+  "description": "The repo's own gates plus the two pause checks. Nothing here needs a secret or the network beyond installing packages.",
   "requiresNoSecrets": true,
-  "forbiddenCommands": ["npm install", "npm run", "pnpm install", "pnpm run"],
+  "forbiddenCommands": [
+    "npm install",
+    "npm run",
+    "pnpm install",
+    "pnpm run"
+  ],
   "commands": [
     {
       "name": "install",
@@ -17,16 +22,16 @@
       "purpose": "The whole offline Foundry suite, including the reviewed-surface test and the invariant suite."
     },
     {
-      "name": "cooldown-acceptance",
+      "name": "pause-acceptance",
       "command": "bash .harness/validators/acceptance.sh",
       "timeoutMs": 300000,
-      "purpose": "The agent's own cooldown tests pass, and the harness-owned acceptance suite pins the rule: skip inside the cooldown, reopen on the second, scheduled runs never revert."
+      "purpose": "The agent's own pause tests pass, and the harness-owned acceptance suite pins the rule: skip while paused, resume on unpause, scheduled runs never revert."
     },
     {
       "name": "engine-rules",
       "command": "node .harness/validators/invariants.mjs",
       "timeoutMs": 60000,
-      "purpose": "Book-first never-revert runScheduled, burn only bought tokens, one _plan sizes the buyback, Skip enum matches the page."
+      "purpose": "Book-first never-revert runScheduled, burn only bought tokens, one _plan sizes the buyback, the pause is decided in _plan, Skip enum matches the page."
     },
     {
       "name": "lint",

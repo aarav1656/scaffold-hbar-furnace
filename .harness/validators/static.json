@@ -1,57 +1,82 @@
 {
-  "name": "furnace-cooldown-static",
-  "description": "The cooldown's names exist where the PRD puts them: the engine, its reviewed-surface test, its own test file, the generated-ABI-free page reads and the Policy panel row.",
+  "name": "furnace-pause-static",
+  "description": "The pause's names exist where the PRD puts them: the engine, its reviewed-surface test, its own test file, the generated-ABI-free page reads and the Policy panel row.",
   "jsonAssertions": [
-    { "file": "package.json", "path": "name", "equals": "scaffold-hbar-furnace" },
-    { "file": "package.json", "path": "packageManager", "equals": "yarn@3.2.3" }
+    {
+      "file": "package.json",
+      "path": "name",
+      "equals": "scaffold-hbar-furnace"
+    },
+    {
+      "file": "package.json",
+      "path": "packageManager",
+      "equals": "yarn@3.2.3"
+    }
   ],
   "fileAssertions": {
     "required": [
       "README.md",
       "AGENTS.md",
       "packages/foundry/contracts/FurnaceEngine.sol",
-      "packages/foundry/test/FurnaceCooldown.t.sol",
+      "packages/foundry/test/FurnacePause.t.sol",
       "packages/nextjs/components/furnace/PolicyPanel.tsx",
       ".harness/spec.yaml",
       ".harness/prd.md"
     ],
-    "forbidden": [".env", "packages/nextjs/.env"]
+    "forbidden": [
+      ".env",
+      "packages/nextjs/.env"
+    ]
   },
   "textAssertions": [
     {
       "file": "packages/foundry/contracts/FurnaceEngine.sol",
       "contains": [
-        "function setBuybackCooldown(",
-        "MAX_BUYBACK_COOLDOWN",
-        "buybackCooldown",
-        "lastBuybackAt",
-        "BuybackCooldownSet",
-        "Skip.Cooldown"
+        "function setBuybacksPaused(",
+        "buybacksPaused",
+        "BuybacksPausedSet",
+        "Skip.Paused"
       ]
     },
     {
       "file": "packages/foundry/test/FurnaceSetup.t.sol",
-      "contains": ["setBuybackCooldown"]
+      "contains": [
+        "setBuybacksPaused"
+      ]
     },
     {
-      "file": "packages/foundry/test/FurnaceCooldown.t.sol",
-      "contains": ["FurnaceCooldown", "setBuybackCooldown", "Skip.Cooldown"]
+      "file": "packages/foundry/test/FurnacePause.t.sol",
+      "contains": [
+        "FurnacePause",
+        "setBuybacksPaused",
+        "Skip.Paused"
+      ]
     },
     {
       "file": "packages/nextjs/utils/furnace/constants.ts",
-      "contains": ["\"Cooldown\"", "buybackCooldown", "lastBuybackAt"]
+      "contains": [
+        "\"Paused\"",
+        "PAUSE_ABI",
+        "buybacksPaused"
+      ]
     },
     {
       "file": "packages/nextjs/hooks/furnace/useEngine.ts",
-      "contains": ["buybackCooldown"]
+      "contains": [
+        "buybacksPaused"
+      ]
     },
     {
       "file": "packages/nextjs/components/furnace/PolicyPanel.tsx",
-      "contains": ["Buyback cooldown"]
+      "contains": [
+        "Buyback pause"
+      ]
     },
     {
       "file": "AGENTS.md",
-      "contains": ["setBuybackCooldown"]
+      "contains": [
+        "setBuybacksPaused"
+      ]
     }
   ]
 }

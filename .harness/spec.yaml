@@ -1,11 +1,11 @@
 schemaVersion: 2
 
-name: furnace-buyback-cooldown
+name: furnace-buyback-pause
 description: >-
-  Add an owner-set buyback cooldown to FurnaceEngine: a minimum number of
-  seconds between two buybacks that spend, enforced inside _plan() so the
-  scheduled run, the manual buyback and the dry run all agree, shown in the
-  Policy panel. Follow AGENTS.md; the engine's invariants do not change.
+  Add an owner-set buyback pause to FurnaceEngine: while it is on, the scheduled
+  run, the manual buyback and the dry run all skip with Skip.Paused, the
+  automation chain keeps booking, and the Policy panel shows the state. Follow
+  AGENTS.md; the engine's invariants do not change.
 
 agent: claude
 maxAttempts: 3

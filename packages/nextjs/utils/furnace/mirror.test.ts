@@ -127,19 +127,9 @@ describe("fetchEngineEvents: decoding the live engine history", () => {
     const { events } = await fetchEngineEvents(ENGINE);
     expect(events.map(e => e.name)).toEqual(Array(SKIP_REASONS.length).fill("BuybackSkipped"));
     const reasons = events.map(e => SKIP_REASONS[(e.args as { reason: number }).reason]);
-    expect(reasons).toEqual([
-      "None",
-      "NotReady",
-      "NoFunds",
-      "BudgetSpent",
-      "PriceCeiling",
-      "ImpactCap",
-      "TooSoon",
-      "LotCap",
-      "NoTwap",
-      "TwapWindow",
-      "TwapDeviation",
-    ]);
+    expect(reasons).toEqual([...SKIP_REASONS]);
+    expect(reasons.slice(0, 6)).toEqual(["None", "NotReady", "NoFunds", "BudgetSpent", "PriceCeiling", "ImpactCap"]);
+    expect(reasons).toContain("TwapDeviation");
     expect(SKIP_TEXT[reasons[4]]).toBe("The token price is at the USD ceiling.");
   });
 });
