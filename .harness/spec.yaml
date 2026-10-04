@@ -1,0 +1,40 @@
+schemaVersion: 2
+
+name: furnace-buyback-cooldown
+description: >-
+  Add an owner-set buyback cooldown to FurnaceEngine: a minimum number of
+  seconds between two buybacks that spend, enforced inside _plan() so the
+  scheduled run, the manual buyback and the dry run all agree, shown in the
+  Policy panel. Follow AGENTS.md; the engine's invariants do not change.
+
+agent: claude
+maxAttempts: 3
+
+# Is the template healthy before the agent touches it?
+baseline:
+  commands:
+    - name: install
+      command: yarn install
+      timeoutMs: 600000
+    - name: contracts-test
+      command: yarn foundry:test
+      timeoutMs: 300000
+    - name: types
+      command: yarn next:check-types
+      timeoutMs: 300000
+
+validators:
+  static: .harness/validators/static.json
+  commands: .harness/validators/yarn.json
+
+# yarn install runs foundry's postinstall, which copies .env.example to
+# packages/foundry/.env (gitignored). The default file check would flag that
+# file on a healthy checkout, so only the files that should never exist are
+# forbidden. The content scan for private-key assignments still runs.
+forbiddenFiles:
+  - .env
+  - packages/nextjs/.env
+secretScan:
+  failOnFiles:
+    - .env
+    - packages/nextjs/.env

@@ -324,6 +324,13 @@ bash scripts/gate.sh
 
 Scaffolds this template with `create-scaffold-hbar` into a temporary directory (from the committed HEAD, or from GitHub with `GATE_TEMPLATE=aarav1656/scaffold-hbar-furnace`), checks for committed secrets, runs `foundry:test`, `lint` and `next:build`, boots the app and requires HTTP 200 from `/`, `/debug` and `/blockexplorer`. `PM=npm bash scripts/gate.sh` runs it with npm. The same gate runs in `.github/workflows/scaffold-gate.yaml` for yarn and npm.
 
+## Extend it with Hedera Harness
+
+`.harness/` is a [hedera-harness](https://github.com/hedera-dev/hedera-harness) recipe for the first extension a token team makes: an owner-set buyback cooldown, enforced in `_plan()` so the scheduled run, the manual buyback and the dry run agree, and shown in the Policy panel.
+Run `npx hedera-harness doctor`, then `npx hedera-harness validate` for the validators alone or `npx hedera-harness run` to drive a coding agent from `.harness/prd.md`.
+The harness decides the outcome: the repo's Foundry suite, lint, types and build, a harness-owned 9-test acceptance suite, and source checks that `runScheduled` books first and never reverts and that only bought tokens burn.
+On the template as committed `validate` reports `findings=17`; with a reference implementation applied it reports `findings=0`, and four deliberate engine bugs each turn the cooldown checks red. Details in [.harness/README.md](.harness/README.md).
+
 ## License
 
 MIT. See [LICENCE](LICENCE).

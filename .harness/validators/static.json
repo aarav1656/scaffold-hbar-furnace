@@ -1,0 +1,57 @@
+{
+  "name": "furnace-cooldown-static",
+  "description": "The cooldown's names exist where the PRD puts them: the engine, its reviewed-surface test, its own test file, the generated-ABI-free page reads and the Policy panel row.",
+  "jsonAssertions": [
+    { "file": "package.json", "path": "name", "equals": "scaffold-hbar-furnace" },
+    { "file": "package.json", "path": "packageManager", "equals": "yarn@3.2.3" }
+  ],
+  "fileAssertions": {
+    "required": [
+      "README.md",
+      "AGENTS.md",
+      "packages/foundry/contracts/FurnaceEngine.sol",
+      "packages/foundry/test/FurnaceCooldown.t.sol",
+      "packages/nextjs/components/furnace/PolicyPanel.tsx",
+      ".harness/spec.yaml",
+      ".harness/prd.md"
+    ],
+    "forbidden": [".env", "packages/nextjs/.env"]
+  },
+  "textAssertions": [
+    {
+      "file": "packages/foundry/contracts/FurnaceEngine.sol",
+      "contains": [
+        "function setBuybackCooldown(",
+        "MAX_BUYBACK_COOLDOWN",
+        "buybackCooldown",
+        "lastBuybackAt",
+        "BuybackCooldownSet",
+        "Skip.Cooldown"
+      ]
+    },
+    {
+      "file": "packages/foundry/test/FurnaceSetup.t.sol",
+      "contains": ["setBuybackCooldown"]
+    },
+    {
+      "file": "packages/foundry/test/FurnaceCooldown.t.sol",
+      "contains": ["FurnaceCooldown", "setBuybackCooldown", "Skip.Cooldown"]
+    },
+    {
+      "file": "packages/nextjs/utils/furnace/constants.ts",
+      "contains": ["\"Cooldown\"", "buybackCooldown", "lastBuybackAt"]
+    },
+    {
+      "file": "packages/nextjs/hooks/furnace/useEngine.ts",
+      "contains": ["buybackCooldown"]
+    },
+    {
+      "file": "packages/nextjs/components/furnace/PolicyPanel.tsx",
+      "contains": ["Buyback cooldown"]
+    },
+    {
+      "file": "AGENTS.md",
+      "contains": ["setBuybackCooldown"]
+    }
+  ]
+}
