@@ -280,6 +280,13 @@ cast call 0xAF685FB45C12b92b5054ccb9313e135525F9b5d5 "latestRoundData()(uint80,i
 
 At the read, `latestRoundData` returned answer `10201640` ($0.10201640, 8 decimals) with `updatedAt` 1791102708 (2026-10-04 08:31:48 UTC), inside the engine's 25 hour staleness limit.
 
+A mainnet fork test deploys `FurnaceEngine` with these addresses and asserts the router resolves the mainnet factory and WHBAR and that the Chainlink feed answers fresh:
+
+```bash
+cd packages/foundry
+forge test --match-path test/MainnetConfig.fork.t.sol --fork-url https://mainnet.hashio.io/api -vv
+```
+
 ## Project layout
 
 ```
