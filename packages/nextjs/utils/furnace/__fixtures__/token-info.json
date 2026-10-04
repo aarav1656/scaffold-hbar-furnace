@@ -1,0 +1,22 @@
+{
+ "admin_key": null,
+ "created_timestamp": "1791020384.150886347",
+ "decimals": "8",
+ "fee_schedule_key": null,
+ "freeze_key": null,
+ "initial_supply": "100000000000000",
+ "kyc_key": null,
+ "max_supply": "100000000000000",
+ "name": "Furnace Demo",
+ "pause_key": null,
+ "supply_key": {
+  "_type": "ProtobufEncoded",
+  "key": "0a051899cf9505"
+ },
+ "supply_type": "FINITE",
+ "symbol": "FURN",
+ "token_id": "0.0.10840036",
+ "total_supply": "89430152857744",
+ "treasury_account_id": "0.0.10839961",
+ "wipe_key": null
+}
