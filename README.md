@@ -351,6 +351,19 @@ Run `npx hedera-harness doctor`, then `npx hedera-harness validate` for the vali
 The harness decides the outcome: the repo's Foundry suite, lint, types and build, a harness-owned 9-test acceptance suite, and source checks that `runScheduled` books first and never reverts and that only bought tokens burn.
 On the template as committed `validate` reports `findings=17`; with a reference implementation applied it reports `findings=0`, and four deliberate engine bugs each turn the cooldown checks red. Details in [.harness/README.md](.harness/README.md).
 
+## Operate it from an AI agent
+
+[`agent/`](agent/) is a Hedera Agent Kit plugin that gives an AI agent eight typed tools over the engine: `get_furnace_state`, `preview_buyback`, `send_revenue`, `buyback_now`, `set_policy`, `start_automation`, `stop_automation` and `rearm_automation`. The state tool splits every burn between the network's own scheduled runs and direct calls from the mirror node and reconciles the total to the contract's `totalBurned`. Every write checks its inputs against the contract's bounds before sending and proves its result from the engine's events and a read-back of the contract. The engine address is read from `packages/nextjs/contracts/deployedContracts.ts`, so a redeploy needs no code change.
+
+```bash
+cd agent && npm install && npm test
+npx tsx examples/direct.ts                        # read-only, no LLM
+npx tsx examples/direct.ts --revenue 1 swap-fees  # send 1 HBAR of tagged revenue (DEPLOYER_PRIVATE_KEY)
+npx tsx examples/ask.ts "What would a buyback spend right now?"   # via the Agent Kit AI SDK adapter
+```
+
+One `send_revenue` call tagged `agent-plugin` is on testnet as [a succeeded transaction](https://hashscan.io/testnet/transaction/0.0.10855086-1791141309-672068643), and the plugin's burn ledger already counts one network burn and one direct burn. [agent/README.md](agent/README.md) covers loading the plugin into an Agent Kit app and an [Agent Lab](https://portal.hedera.com/agent-lab) agent.
+
 ## License
 
 MIT. See [LICENCE](LICENCE).

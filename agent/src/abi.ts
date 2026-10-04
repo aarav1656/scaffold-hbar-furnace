@@ -1,0 +1,68 @@
+import { parseAbi } from "viem";
+
+const STATUS =
+  "(address token, address pair, address lpToken, uint256 totalSupply, uint256 totalBurned, uint256 totalSpentHbar, uint256 spentTodayUsd, uint256 budgetLeftUsd, uint256 priceHbar, uint256 priceUsd, uint256 hbarUsd, uint256 reserveHbar, uint256 reserveToken, uint256 teamUnclaimed, uint256 liquidityUnseeded, uint256 balance, uint256 fuel, uint256 nextRunAt, address pendingSchedule, uint256 interval, uint256 twapPriceHbar, uint256 twapWindow, uint256 twapDeviationBps, uint256 lastBuyAt, uint256 nextBuyAt)";
+
+/** The slice of FurnaceEngine the agent talks to. Mirrors packages/foundry/contracts/FurnaceEngine.sol. */
+export const engineAbi = parseAbi([
+  "function owner() view returns (address)",
+  "function router() view returns (address)",
+  "function whbar() view returns (address)",
+  `function status() view returns (${STATUS} s)`,
+  "function previewBuyback() view returns (uint8 skip, uint256 spend)",
+  "function dailyBudgetUsd() view returns (uint256)",
+  "function maxImpactBps() view returns (uint256)",
+  "function priceCeilingUsd() view returns (uint256)",
+  "function slippageBps() view returns (uint256)",
+  "function maxLotUsd() view returns (uint256)",
+  "function minGapSeconds() view returns (uint256)",
+  "function maxTwapDeviationBps() view returns (uint256)",
+  "function minSpend() view returns (uint256)",
+  "function fuelReserve() view returns (uint256)",
+  "function scheduledGas() view returns (uint256)",
+  "function runInterval() view returns (uint256)",
+  "function tokenDecimals() view returns (uint8)",
+  "function REARM_GRACE() view returns (uint256)",
+  "function depositRevenue(bytes32 source) payable",
+  "function buyback() returns (uint256 tokensBurned)",
+  "function setDailyBudgetUsd(uint256 value)",
+  "function setMaxImpactBps(uint256 value)",
+  "function setPriceCeilingUsd(uint256 value)",
+  "function setSlippageBps(uint256 value)",
+  "function setMaxLotUsd(uint256 value)",
+  "function setMinGapSeconds(uint256 value)",
+  "function setMaxTwapDeviationBps(uint256 value)",
+  "function startAutomation(uint256 interval)",
+  "function stopAutomation()",
+  "function rearm()",
+  "event RevenueReceived(address indexed from, uint256 amount)",
+  "event RevenueTagged(bytes32 indexed source, address indexed from, uint256 amount)",
+  "event Burned(uint256 hbarIn, uint256 tokensBurned, uint256 priceHbar, uint256 priceUsd, uint256 supplyAfter)",
+  "event BuybackSkipped(uint8 reason)",
+  "event ScheduledRun(uint256 tokensBurned)",
+  "event ScheduledRunFailed(bytes reason)",
+  "event AutomationStarted(uint256 interval)",
+  "event AutomationStopped()",
+  "event RunBooked(address indexed schedule, uint256 expiry)",
+  "event Rearmed(address indexed stale, address indexed replacement)",
+  "error NotOwnerOrSelf()",
+  "error OwnableUnauthorizedAccount(address account)",
+  "error BuybackRefused(uint8 reason)",
+  "error NothingBought()",
+  "error AllocationBreach()",
+  "error HtsCallFailed(int64 responseCode)",
+  "error StaleOracle(uint256 updatedAt)",
+  "error BadOraclePrice(int256 answer)",
+  "error BadConfig()",
+  "error ZeroAmount()",
+  "error AutomationOff()",
+  "error AutomationActive()",
+  "error ScheduleLive(uint256 nextRunAt)",
+  "error BadInterval(uint256 interval)",
+  "error ScheduleFailed(int64 responseCode)",
+  "error TransferFailed(address token)",
+]);
+
+export const erc20Abi = parseAbi(["function symbol() view returns (string)", "function decimals() view returns (uint8)"]);
+
+export const routerAbi = parseAbi(["function getAmountsOut(uint256 amountIn, address[] path) view returns (uint256[] amounts)"]);

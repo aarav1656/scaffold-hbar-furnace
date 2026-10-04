@@ -1,0 +1,171 @@
+engine 0x3249617e95785640140a05f55fd9c798f0e116df  rpc https://testnet.hashio.io/api  acting as 0.0.10855086  write flags available (DEPLOYER_PRIVATE_KEY set)
+
+== get_furnace_state
+Furnace 0x3249617e95785640140a05f55fd9c798f0e116df: 21985.57339611 FURN burned (2.19% of the original supply) for 5.83381598 HBAR, 978014.42660389 left in supply.
+2 burns: 1 by the network's schedule, 1 by direct calls.
+Budget left today: $4.4 of $5 (42.64678757 HBAR).
+A buyback now would be skipped: TooSoon. The minimum gap since the last buy has not passed.
+Next scheduled burn in 33 min (2026-10-04T19:51:04.000Z).
+Fuel 25 HBAR covers about 16 scheduled runs (0.38 days).
+{
+  "status": "SUCCESS",
+  "engine": "0x3249617e95785640140a05f55fd9c798f0e116df",
+  "owner": "0x11Cf661848D52aEdF638658E6b68762549f74a0C",
+  "token": {
+    "id": "0x0000000000000000000000000000000000a5B86E",
+    "symbol": "FURN",
+    "decimals": 8,
+    "totalSupply": "978014.42660389",
+    "teamUnclaimed": "0",
+    "liquidityUnseeded": "0"
+  },
+  "burned": {
+    "totalBurned": "21985.57339611",
+    "totalSpentHbar": "5.83381598",
+    "percentOfSupplyBurned": "2.19",
+    "burns": {
+      "network": 1,
+      "manual": 1
+    },
+    "byNetwork": {
+      "tokens": "10647.14082776",
+      "hbar": "2.90773551"
+    },
+    "byManual": {
+      "tokens": "11338.43256835",
+      "hbar": "2.92608047"
+    },
+    "mirrorReconciled": true
+  },
+  "budget": {
+    "dailyUsd": "5",
+    "spentTodayUsd": "0.6",
+    "leftUsd": "4.4",
+    "leftHbar": "42.64678757",
+    "hbarUsd": "0.10317307",
+    "oracle": "fresh"
+  },
+  "engineBalanceHbar": "68.06739562",
+  "spendableHbar": "43.06739562",
+  "pool": {
+    "priceHbar": "0.00027997",
+    "priceUsd": "0.00002888",
+    "reserveHbar": "105.83381598",
+    "reserveToken": "378014.42660389"
+  },
+  "policy": {
+    "dailyBudgetUsd": "5",
+    "maxImpactBps": 500,
+    "priceCeilingUsd": null,
+    "slippageBps": 300,
+    "maxLotUsd": "0.3",
+    "minGapSeconds": 900,
+    "maxTwapDeviationBps": 500,
+    "minSpendHbar": "1",
+    "fuelReserveHbar": "25",
+    "anyoneMayTrigger": true
+  },
+  "nextBuyAt": 1791142264,
+  "nextBurn": {
+    "automation": "on",
+    "intervalSeconds": 2100,
+    "pendingSchedule": "0x0000000000000000000000000000000000a5bA73",
+    "nextRunAt": 1791143464,
+    "nextRunAtIso": "2026-10-04T19:51:04.000Z",
+    "secondsUntil": 1957,
+    "status": "scheduled",
+    "rearmable": false
+  },
+  "fuel": {
+    "fuelHbar": "25",
+    "reservationHbar": "3.48",
+    "lastRunCostHbar": "1.42268474",
+    "runsCovered": 16,
+    "daysCovered": 0.38,
+    "basis": "last-run-cost"
+  },
+  "buyback": {
+    "wouldSpend": false,
+    "skip": {
+      "code": 6,
+      "name": "TooSoon",
+      "meaning": "The minimum gap since the last buy has not passed."
+    },
+    "spendHbar": "0"
+  },
+  "links": {
+    "engine": "https://hashscan.io/testnet/contract/0x3249617e95785640140a05f55fd9c798f0e116df",
+    "token": "https://hashscan.io/testnet/token/0.0.10860654",
+    "pair": "https://hashscan.io/testnet/contract/0xfa7511E92d54c29E469A88aE67334b7b1c2C0806",
+    "owner": "https://hashscan.io/testnet/account/0x11Cf661848D52aEdF638658E6b68762549f74a0C",
+    "pendingSchedule": "https://hashscan.io/testnet/schedule/0.0.10861171"
+  }
+}
+
+== preview_buyback
+A buyback now would be skipped: TooSoon. The minimum gap since the last buy has not passed.
+{
+  "status": "SUCCESS",
+  "engine": "0x3249617e95785640140a05f55fd9c798f0e116df",
+  "wouldSpend": false,
+  "skip": {
+    "code": 6,
+    "name": "TooSoon",
+    "meaning": "The minimum gap since the last buy has not passed."
+  },
+  "spendHbar": "0",
+  "spendUsd": "0",
+  "estimatedTokensBurned": null,
+  "tokenSymbol": "FURN",
+  "availableAboveFuelHbar": "43.06739562",
+  "budgetLeftUsd": "4.4",
+  "whoMayTrigger": "the owner, or anyone while the buy would spend (minimum gap is set)",
+  "nextBuyAt": 1791142264,
+  "policy": {
+    "dailyBudgetUsd": "5",
+    "maxImpactBps": 500,
+    "priceCeilingUsd": null,
+    "slippageBps": 300,
+    "maxLotUsd": "0.3",
+    "minGapSeconds": 900,
+    "maxTwapDeviationBps": 500,
+    "minSpendHbar": "1",
+    "fuelReserveHbar": "25",
+    "anyoneMayTrigger": true
+  },
+  "links": {
+    "engine": "https://hashscan.io/testnet/contract/0x3249617e95785640140a05f55fd9c798f0e116df"
+  }
+}
+
+== send_revenue (RETURN_BYTES, not sent)
+Unsigned ContractExecuteTransaction ready: 973 bytes, payer 0.0.10855086, valid until 2026-10-04T19:20:24.464Z. Not sent.
+{
+  "status": "SUCCESS",
+  "transactionId": "0.0.10855086@1791141504.464810254",
+  "payerAccountId": "0.0.10855086",
+  "type": "ContractExecuteTransaction",
+  "expiresAt": "2026-10-04T19:20:24.464Z",
+  "memo": "",
+  "plan": {
+    "account": "0.0.10855086",
+    "hbar": "1",
+    "path": "depositRevenue(\"agent-demo\")",
+    "sourceRecorded": true
+  }
+}
+
+== buyback_now (RETURN_BYTES, not sent)
+A buyback now would be skipped (TooSoon): The minimum gap since the last buy has not passed. Pass force: true to send it anyway; it burns nothing, costs gas and moves the engine's price snapshot.
+{
+  "status": "SUCCESS",
+  "noop": true,
+  "reason": "A buyback now would be skipped (TooSoon): The minimum gap since the last buy has not passed. Pass force: true to send it anyway; it burns nothing, costs gas and moves the engine's price snapshot.",
+  "skip": {
+    "code": 6,
+    "name": "TooSoon",
+    "meaning": "The minimum gap since the last buy has not passed."
+  }
+}
+
+Read-only run complete. Add --revenue 1, --buyback, --policy name=value, --start N, --stop or --rearm with DEPLOYER_PRIVATE_KEY set to send.

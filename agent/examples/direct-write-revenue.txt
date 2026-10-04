@@ -1,0 +1,19 @@
+# direct.ts --revenue 1 agent-plugin, run 2026-10-04 against the v2 engine on Hedera testnet (signer: deployer 0.0.10855086, key not printed)
+== send_revenue
+Sent 1 HBAR of revenue to the engine tagged "agent-plugin". https://hashscan.io/testnet/transaction/0.0.10855086-1791141309-672068643
+{
+  "status": "SUCCESS",
+  "transactionId": "0.0.10855086@1791141309.672068643",
+  "hash": "0x8d8300bef6a3a472b387f5e664de82e3d19a40df49f616490202d0e6d1992b0b",
+  "account": "0.0.10855086",
+  "hbarSent": "1",
+  "path": "depositRevenue",
+  "source": "agent-plugin",
+  "sourceRecorded": true,
+  "event": "RevenueTagged",
+  "gasUsed": 23483,
+  "links": {
+    "tx": "https://hashscan.io/testnet/transaction/0.0.10855086-1791141309-672068643",
+    "engine": "https://hashscan.io/testnet/contract/0x3249617e95785640140a05f55fd9c798f0e116df"
+  }
+}
