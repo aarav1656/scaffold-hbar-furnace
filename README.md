@@ -14,6 +14,8 @@ A buyback-and-burn engine for Hedera tokens, as a [Scaffold-HBAR](https://docs.h
 
 The `--` matters with `npm create`: without it npm keeps `--template` for itself. `npx create-scaffold-hbar@latest --template aarav1656/scaffold-hbar-furnace` is equivalent.
 
+**Live app:** [furnace-hbar.vercel.app](https://furnace-hbar.vercel.app) reads the live engine on Hedera testnet: supply falling burn by burn, policy and budget left, next scheduled burn, and the activity feed. Anyone can send revenue from the page.
+
 ## Make it your token's buyback engine
 
 1. Scaffold with the command above: `npm create scaffold-hbar@latest -- --template aarav1656/scaffold-hbar-furnace`.
