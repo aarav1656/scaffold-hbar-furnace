@@ -631,7 +631,7 @@ The radius scale is sober and editorial — Mistral does NOT use pill buttons. `
 - Inactive: text `{colors.steel}`, transparent background, padding `{spacing.sm} {spacing.md}`, no bottom border.
 - Active: text `{colors.primary}`, 2px bottom border in `{colors.primary}`.
 
-### Badges & Status
+### Badges and Pills
 
 **`badge-orange`** — Saturated orange badge.
 - Background `{colors.primary}`, text `{colors.on-primary}`, typography `{typography.caption-bold}`, rounded `{rounded.full}`, padding `4px 10px`.
@@ -764,13 +764,6 @@ The radius scale is sober and editorial — Mistral does NOT use pill buttons. `
 6. Keep `{colors.primary}` confined to primary CTAs, active states, and the sunset stripe band
 7. Cards use `{rounded.lg}` (12px), buttons use `{rounded.md}` (8px). Pills (`{rounded.full}`) reserved for badges only.
 8. Always include the sunset-stripe-band component at the foot of every page mockup.
-
-## Known Gaps
-
-- Specific dark-mode token values not surfaced; the brand has not shipped a published dark-mode palette
-- Animation/transition timings not extracted; recommend 150–200ms ease for hover/focus state transitions
-- Form validation success state not explicitly captured beyond defaults
-- Sunset stripe band gradient stops are approximations — the actual values may vary slightly across pages but the visual rhythm is consistent
 
 ## Furnace bindings
 
