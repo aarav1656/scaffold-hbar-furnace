@@ -45,8 +45,8 @@ export const HeaderMenuLinks = () => {
               passHref
               aria-current={isActive ? "page" : undefined}
               className={`${
-                isActive ? "bg-primary/10 text-primary font-semibold" : "hover:bg-primary/5"
-              } py-1.5 px-3 text-sm rounded-lg gap-2 grid grid-flow-col transition-colors`}
+                isActive ? "bg-neutral text-neutral-content font-medium" : "hover:bg-secondary"
+              } py-1.5 px-3 text-sm rounded-full gap-2 grid grid-flow-col transition-colors`}
             >
               {icon}
               <span>{label}</span>
@@ -68,7 +68,7 @@ export const Header = () => {
   });
 
   return (
-    <div className="sticky lg:static top-0 navbar bg-base-100 min-h-0 shrink-0 justify-between z-20 border-b border-base-300 px-0 sm:px-2">
+    <div className="sticky lg:static top-0 navbar bg-base-200 min-h-0 shrink-0 justify-between z-20 border-b border-base-300 px-0 sm:px-2 py-2 text-base-content">
       <div className="navbar-start w-auto lg:w-1/2">
         <details className="dropdown" ref={burgerMenuRef}>
           <summary className="ml-1 btn btn-ghost lg:hidden hover:bg-transparent" aria-label="Open menu">
@@ -85,7 +85,7 @@ export const Header = () => {
         </details>
         <Link href="/" passHref className="hidden lg:flex items-center gap-3 ml-4 mr-6 shrink-0">
           <Mark className="h-8 w-8" />
-          <span className="font-semibold leading-tight text-base tracking-tight">Furnace</span>
+          <span className="font-serif text-2xl leading-none tracking-tight">Furnace</span>
         </Link>
         <ul className="hidden lg:flex lg:flex-nowrap menu menu-horizontal px-1 gap-2">
           <HeaderMenuLinks />

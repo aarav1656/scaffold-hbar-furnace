@@ -9,9 +9,9 @@ import { supplySeries } from "~~/utils/furnace/supply";
 
 const Stat = ({ label, value, sub }: { label: string; value: React.ReactNode; sub: React.ReactNode }) => (
   <div>
-    <dt className="text-xs font-medium text-base-content/60">{label}</dt>
-    <dd className="m-0 mt-2 break-words font-mono text-2xl tabular-nums leading-none">{value}</dd>
-    <dd className="m-0 mt-2 text-xs text-base-content/60">{sub}</dd>
+    <dt className="text-sm font-medium text-slate">{label}</dt>
+    <dd className="m-0 mt-2 break-words font-serif text-4xl tabular-nums leading-none">{value}</dd>
+    <dd className="m-0 mt-3 text-sm text-steel">{sub}</dd>
   </div>
 );
 
@@ -49,8 +49,8 @@ export function SupplyPanel({ snap }: { snap: Snapshot }) {
         </>
       }
     >
-      <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-[17rem_1fr] lg:gap-10">
-        <dl className="m-0 grid grid-cols-1 content-start gap-7">
+      <div className="mt-6 flex flex-col gap-6">
+        <dl className="m-0 grid grid-cols-1 gap-5 sm:grid-cols-3 sm:gap-6">
           <Stat
             label="Total supply"
             value={`${fmtUnits(supply, decimals, 2)}`}
@@ -87,7 +87,7 @@ export function SupplyPanel({ snap }: { snap: Snapshot }) {
                 onSelect={setPicked}
               />
               {sel?.burn && (
-                <p className="m-0 mt-3 text-sm text-base-content/80" aria-live="polite">
+                <p className="m-0 mt-3 text-sm text-slate" aria-live="polite">
                   <span className="font-mono tabular-nums">
                     Burn {ordinal} of {burnCount}
                   </span>
@@ -100,7 +100,7 @@ export function SupplyPanel({ snap }: { snap: Snapshot }) {
             </>
           ) : (
             <div className="grid h-full min-h-48 place-items-center rounded-box border border-dashed border-base-300 p-6 text-center">
-              <p className="m-0 max-w-sm text-sm text-base-content/70">
+              <p className="m-0 max-w-sm text-sm text-slate">
                 {points
                   ? "Nothing has burned yet. The supply line starts stepping down at the first buyback."
                   : "Reading the burn history from the mirror node."}

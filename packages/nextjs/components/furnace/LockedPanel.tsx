@@ -68,7 +68,7 @@ export function LockedPanel({ snap }: { snap: Snapshot }) {
           </Row>
         </dl>
       ) : (
-        <p className="m-0 mt-4 text-sm text-base-content/70">Reading the token from the mirror node.</p>
+        <p className="m-0 mt-4 text-sm text-slate">Reading the token from the mirror node.</p>
       )}
     </Panel>
   );

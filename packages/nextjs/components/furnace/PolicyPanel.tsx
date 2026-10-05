@@ -7,18 +7,21 @@ import { hashscan } from "~~/utils/furnace/hedera";
 const BUDGET_WINDOW = 86_400;
 
 /** A horizontal gauge: `fill` of `of`, in the ember colour, with the empty track behind it. */
-const Gauge = ({ fill, of, label }: { fill: bigint; of: bigint; label: string }) => {
+const Gauge = ({ fill, of, label, drain = false }: { fill: bigint; of: bigint; label: string; drain?: boolean }) => {
   const pct = of > 0n ? Number((fill * 10_000n) / of) / 100 : 0;
   return (
     <div
-      className="h-2 w-full overflow-hidden rounded-full bg-base-300"
+      className="h-3 w-full overflow-hidden rounded-full bg-secondary"
       role="meter"
       aria-label={label}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.min(100, Math.round(pct))}
     >
-      <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, pct)}%` }} />
+      <div
+        className="burn-gauge h-full rounded-full transition-[width] duration-700"
+        style={{ width: `${drain ? Math.max(0, 100 - pct) : Math.min(100, pct)}%` }}
+      />
     </div>
   );
 };
@@ -40,15 +43,21 @@ export function PolicyPanel({ snap }: { snap: Snapshot }) {
     <Panel id="policy-title" title="Policy" note="Set by the owner, enforced by the contract on every run">
       <div className="mt-5">
         <div className="flex items-baseline justify-between gap-4">
-          <span className="text-sm text-base-content/70">Spent today</span>
+          <span className="text-sm text-slate">Spent today</span>
           <span className="font-mono text-sm tabular-nums">
             {fmtUsd(s.spentTodayUsd)} of {fmtUsd(lv.dailyBudgetUsd)}
           </span>
         </div>
         <div className="mt-2">
-          <Gauge fill={s.spentTodayUsd} of={lv.dailyBudgetUsd} label="Share of the daily USD budget already spent" />
+          <Gauge
+            fill={s.spentTodayUsd}
+            of={lv.dailyBudgetUsd}
+            drain
+            label="Share of the daily USD budget already spent"
+          />
         </div>
-        <p className="m-0 mt-2 text-xs text-base-content/60">
+        <p className="m-0 mt-2 text-xs text-steel">
+          The bar is the budget still to burn.{" "}
           {resetsIn !== undefined && resetsIn > 0
             ? `The 24h window rolls over in ${fmtDuration(resetsIn)}.`
             : "The next buyback opens a fresh 24h window."}

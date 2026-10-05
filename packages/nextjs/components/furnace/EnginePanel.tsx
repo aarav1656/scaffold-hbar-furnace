@@ -67,11 +67,11 @@ export function EnginePanel({ snap }: { snap: Snapshot }) {
       note={<ExternalLink href={hashscan.contract(ENGINE_ADDRESS)}>Contract on HashScan</ExternalLink>}
     >
       <div className="mt-5">
-        <div className="text-xs font-medium text-base-content/60">Next scheduled burn</div>
+        <div className="text-xs font-medium text-steel">Next scheduled burn</div>
         <div className={`mt-2 font-mono text-2xl tabular-nums leading-none ${countdown.bad ? "text-error" : ""}`}>
           {countdown.text}
         </div>
-        {countdown.note && <div className="mt-2 text-xs text-base-content/60">{countdown.note}</div>}
+        {countdown.note && <div className="mt-2 text-xs text-steel">{countdown.note}</div>}
       </div>
 
       <dl className="m-0 mt-4">

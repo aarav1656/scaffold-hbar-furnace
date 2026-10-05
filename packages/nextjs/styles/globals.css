@@ -5,25 +5,37 @@
 @theme {
   --shadow-center: 0 0 12px -2px rgb(0 0 0 / 0.05);
   --animate-pulse-fast: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  --color-hedera-ultraviolet: #8259ef;
-  --color-hedera-azure: #0031ff;
-  --color-hedera-charcoal: #11151d;
-  --color-hedera-indigo: #00156e;
-  --color-hedera-cobalt: #2d84eb;
-  --color-hedera-violet: #4f46e5;
-  --color-hedera-smoke: #9b9b9d;
+
+  /* DESIGN.md colors: orange family and the surfaces it sits on */
+  --color-ember: #fa520f;
+  --color-ember-deep: #cc3a05;
+  --color-sunshine-300: #ffd06a;
+  --color-sunshine-500: #ffb83e;
+  --color-sunshine-700: #ffa110;
+  --color-yellow-saturated: #ffd900;
+  --color-cream: #fff8e0;
+  --color-cream-light: #fffaeb;
+  --color-cream-deeper: #fff0c2;
+  --color-beige-deep: #e6d5a8;
+  --color-ink: #1f1f1f;
+  --color-hairline: #e5e5e5;
+
+  /* DESIGN.md radii */
+  --radius-md: 8px;
+  --radius-lg: 12px;
 }
 
-/* next/font defines --font-plex-* on <body>; inline keeps the reference there instead of at :root. */
+/* next/font defines --font-* on <body>; inline keeps the reference there instead of at :root. */
 @theme inline {
-  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-instrument-serif), "Iowan Old Style", Georgia, serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 @plugin "daisyui" {
   themes:
-    light,
-    dark --prefersdark;
+    light --default,
+    dark;
 }
 
 @plugin "daisyui/theme" {
@@ -31,24 +43,24 @@
   default: true;
   color-scheme: light;
 
-  --color-base-100: #fbfaf6;
-  --color-base-200: #f2f0e9;
-  --color-base-300: #dedbcf;
-  --color-base-content: #1a1b1f;
-  --color-primary: #b8430d;
+  --color-base-100: #ffffff;
+  --color-base-200: #fffaeb;
+  --color-base-300: #e6d5a8;
+  --color-base-content: #1f1f1f;
+  --color-primary: #cc3a05;
   --color-primary-content: #ffffff;
-  --color-secondary: #f4e3d8;
-  --color-secondary-content: #1a1b1f;
-  --color-accent: #b8430d;
+  --color-secondary: #fff0c2;
+  --color-secondary-content: #1f1f1f;
+  --color-accent: #cc3a05;
   --color-accent-content: #ffffff;
-  --color-neutral: #1a1b1f;
-  --color-neutral-content: #f2f0e9;
-  --color-info: #b8430d;
+  --color-neutral: #1f1f1f;
+  --color-neutral-content: #fff8e0;
+  --color-info: #cc3a05;
   --color-success: #1d7a52;
-  --color-warning: #a8670e;
-  --color-error: #b93636;
+  --color-warning: #8f5200;
+  --color-error: #b3261e;
 
-  --radius-selector: 0.375rem;
+  --radius-selector: 0.5rem;
   --radius-field: 0.5rem;
   --radius-box: 0.75rem;
   --depth: 0;
@@ -58,27 +70,27 @@
 
 @plugin "daisyui/theme" {
   name: "dark";
-  prefersdark: true;
+  prefersdark: false;
   color-scheme: dark;
 
-  --color-base-100: #17181d;
-  --color-base-200: #101115;
-  --color-base-300: #2a2b33;
-  --color-base-content: #ecebe6;
-  --color-primary: #ff9459;
-  --color-primary-content: #1f0d03;
-  --color-secondary: #36241a;
-  --color-secondary-content: #ecebe6;
-  --color-accent: #ff9459;
-  --color-accent-content: #1f0d03;
-  --color-neutral: #ecebe6;
-  --color-neutral-content: #101115;
-  --color-info: #ff9459;
+  --color-base-100: #1c1c1e;
+  --color-base-200: #151413;
+  --color-base-300: #3a352c;
+  --color-base-content: #fff8e0;
+  --color-primary: #ff8a3d;
+  --color-primary-content: #1f1f1f;
+  --color-secondary: #2c2620;
+  --color-secondary-content: #fff8e0;
+  --color-accent: #ff8a3d;
+  --color-accent-content: #1f1f1f;
+  --color-neutral: #fff8e0;
+  --color-neutral-content: #1f1f1f;
+  --color-info: #ff8a3d;
   --color-success: #4cc38a;
-  --color-warning: #e0a23a;
-  --color-error: #f0736b;
+  --color-warning: #ffb83e;
+  --color-error: #ff8f86;
 
-  --radius-selector: 0.375rem;
+  --radius-selector: 0.5rem;
   --radius-field: 0.5rem;
   --radius-box: 0.75rem;
   --depth: 0;
@@ -86,6 +98,21 @@
 
   --tt-tailw: 6px;
   --tt-bg: var(--color-primary);
+}
+
+/* Secondary text colours flip with the theme so both clear 4.5:1 on their surfaces. */
+:root {
+  --text-steel: #5f5f5f;
+  --text-slate: #454545;
+  --sunset: linear-gradient(90deg, #cc3a05 0%, #fa520f 28%, #ffa110 58%, #ffd900 82%, #fff8e0 100%);
+  --burn-fill-top: #ffd06a;
+  --burn-fill-bottom: #fa520f;
+}
+[data-theme="dark"] {
+  --text-steel: #b9b2a0;
+  --text-slate: #d6cfbb;
+  --burn-fill-top: #ffb83e;
+  --burn-fill-bottom: #fa520f;
 }
 
 /*
@@ -108,7 +135,9 @@
 
   body {
     min-height: 100vh;
-    font-family: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
   }
 
   h1,
@@ -117,6 +146,13 @@
   h4 {
     margin-bottom: 0.5rem;
     line-height: 1.15;
+  }
+
+  h1,
+  h2 {
+    font-family: var(--font-instrument-serif), "Iowan Old Style", Georgia, serif;
+    font-weight: 400;
+    letter-spacing: -0.01em;
   }
 }
 
@@ -129,8 +165,21 @@
   text-underline-offset: 2px;
 }
 
-.hedera-gradient {
-  background: linear-gradient(135deg, #8259ef 0%, #0031ff 100%);
+.sunset-stripe {
+  height: 14px;
+  background: var(--sunset);
+}
+
+@utility text-steel {
+  color: var(--text-steel);
+}
+
+@utility text-slate {
+  color: var(--text-slate);
+}
+
+.burn-gauge {
+  background: linear-gradient(90deg, var(--burn-fill-top), var(--burn-fill-bottom));
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -156,4 +205,9 @@
 .draw-line {
   stroke-dasharray: 1;
   animation: draw-line 1.2s ease-out both;
+}
+
+/* The wallet balance button ships white text for a dark header; it sits on cream here. */
+.navbar-end button.bg-transparent {
+  color: var(--color-base-content);
 }

@@ -48,7 +48,7 @@ export function RevenuePanel({ snap }: { snap: Snapshot }) {
 
   return (
     <Panel id="revenue-title" title="Send revenue">
-      <p className="m-0 mt-1 max-w-md text-sm text-base-content/70">
+      <p className="m-0 mt-1 max-w-md text-sm text-slate">
         Anyone can point HBAR at the engine: a plain transfer to its address. What sits above the{" "}
         {fmtUnits(lv.s.fuel, 8, 2)} HBAR fuel reserve is spent by the next run, inside the budget.
       </p>
@@ -56,7 +56,7 @@ export function RevenuePanel({ snap }: { snap: Snapshot }) {
       <label className="mt-5 flex flex-col gap-2">
         <span className="flex items-baseline justify-between text-sm font-medium">
           Amount
-          <span className="text-xs font-normal text-base-content/60">
+          <span className="text-xs font-normal text-steel">
             Wallet{" "}
             <span className="font-mono tabular-nums">
               {walletBalance !== undefined ? `${fmtUnits(walletBalance, 18, 4)} HBAR` : "n/a"}
@@ -112,7 +112,7 @@ export function RevenuePanel({ snap }: { snap: Snapshot }) {
                 <tr key={row.source} className="border-t border-base-300">
                   <td className="py-1.5 pr-3">{row.source}</td>
                   <td className="py-1.5 pr-3 text-right font-mono tabular-nums">{fmtUnits(row.amount, 8, 4)} HBAR</td>
-                  <td className="py-1.5 text-right text-xs text-base-content/60">
+                  <td className="py-1.5 text-right text-xs text-steel">
                     {total > 0n ? fmtShare(row.amount, total, 1) : ""} · {row.deposits}{" "}
                     {row.deposits === 1 ? "deposit" : "deposits"}
                   </td>
@@ -120,12 +120,12 @@ export function RevenuePanel({ snap }: { snap: Snapshot }) {
               ))}
             </tbody>
           </table>
-          <p className="m-0 mt-2 text-xs text-base-content/60">
+          <p className="m-0 mt-2 text-xs text-steel">
             Deposits made with <code>depositRevenue(source)</code> carry their label; plain transfers read as untagged.
           </p>
         </div>
       )}
-      <p className="m-0 mt-3 text-xs text-base-content/60">
+      <p className="m-0 mt-3 text-xs text-steel">
         Engine <ExternalLink href={hashscan.contract(ENGINE_ADDRESS)}>{shortAddress(ENGINE_ADDRESS)}</ExternalLink>
       </p>
     </Panel>

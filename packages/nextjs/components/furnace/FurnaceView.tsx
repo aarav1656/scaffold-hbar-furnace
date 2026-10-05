@@ -20,12 +20,12 @@ export function FurnaceView() {
   const symbol = engine.tokenInfo.data?.symbol;
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
       <header>
-        <h1 className="m-0 max-w-2xl text-3xl font-semibold tracking-tight md:text-5xl">
-          Revenue buys {symbol ?? "the token"} back and burns it.
+        <h1 className="m-0 text-5xl leading-[1.05] md:text-6xl">
+          Revenue buys {symbol ?? "the token"} back and <span className="text-primary">burns it.</span>
         </h1>
-        <p className="mt-4 max-w-xl text-base text-base-content/70">
+        <p className="mt-4 max-w-2xl text-base text-slate">
           Send HBAR to the engine. On its own Hedera schedule it buys {symbol ?? "the token"} on SaucerSwap inside a USD
           daily budget, below a price ceiling, then burns every token it bought. The network enforces the supply.{" "}
           {engine.deployed && (
@@ -64,9 +64,9 @@ export function FurnaceView() {
       )}
 
       {engine.deployed && !(config.isError || live.isError) && (!config.data || !live.data) && (
-        <div className="flex flex-col gap-8" aria-busy="true" aria-label="Reading the engine">
-          <div className="h-80 animate-pulse rounded-box bg-base-300/50" />
-          <div className="h-80 animate-pulse rounded-box bg-base-300/50" />
+        <div className="flex flex-col gap-10" aria-busy="true" aria-label="Reading the engine">
+          <div className="h-80 animate-pulse rounded-box bg-secondary" />
+          <div className="h-80 animate-pulse rounded-box bg-secondary" />
         </div>
       )}
 

@@ -32,7 +32,7 @@ const Section = ({ title, hint, children }: { title: string; hint?: React.ReactN
   <div className="flex flex-col gap-3 rounded-box border border-base-300 p-5">
     <div>
       <h3 className="m-0 text-base font-semibold">{title}</h3>
-      {hint && <p className="m-0 mt-1 text-xs text-base-content/60">{hint}</p>}
+      {hint && <p className="m-0 mt-1 text-xs text-steel">{hint}</p>}
     </div>
     {children}
   </div>
@@ -52,7 +52,7 @@ const Field = ({
   mode?: "decimal" | "numeric" | "text";
 }) => (
   <label className="flex flex-col gap-1">
-    <span className="text-xs text-base-content/70">{label}</span>
+    <span className="text-xs text-slate">{label}</span>
     <input
       inputMode={mode}
       className="input w-full min-w-0 font-mono tabular-nums"
@@ -119,7 +119,7 @@ function PolicyRow({
     <div className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between gap-3">
         <span className="text-sm font-medium">{label}</span>
-        <span className="font-mono text-xs tabular-nums text-base-content/60">now {current}</span>
+        <span className="font-mono text-xs tabular-nums text-steel">now {current}</span>
       </div>
       <div className="join w-full">
         <input
@@ -141,7 +141,7 @@ function PolicyRow({
           Set
         </button>
       </div>
-      <p className="m-0 text-xs text-base-content/60">{hint}</p>
+      <p className="m-0 text-xs text-steel">{hint}</p>
       {status}
     </div>
   );
@@ -253,7 +253,7 @@ function AutomationControls({ snap, runs }: { snap: Snapshot; runs: bigint | und
               ))}
             </select>
           </div>
-          <p className="m-0 text-xs text-base-content/60">
+          <p className="m-0 text-xs text-steel">
             Between {fmtDuration(cfg.minInterval)} and {fmtDuration(cfg.maxInterval)}.
             {runs === 0n && " The fuel reserve does not cover a run yet, so send HBAR to the engine first."}
           </p>
@@ -335,7 +335,7 @@ function ClaimControls({ snap }: { snap: Snapshot }) {
       hint={`${fmtUnits(left, lv.tokenDecimals, 2)} ${symbol} remain. The team allocation is never burned.`}
     >
       {left === 0n ? (
-        <p className="m-0 text-sm text-base-content/70">The whole team allocation has been claimed.</p>
+        <p className="m-0 text-sm text-slate">The whole team allocation has been claimed.</p>
       ) : (
         <>
           <Field label="Recipient" mode="text" value={to} onChange={setTo} placeholder={ready.address ?? "0x…"} />
@@ -511,7 +511,7 @@ export function OwnerControls({ snap, runs }: { snap: Snapshot; runs: bigint | u
         {initialised && <AutomationControls snap={snap} runs={runs} />}
         {isSet(lv.s.token) && <ClaimControls snap={snap} />}
       </div>
-      <p className="m-0 mt-5 text-xs text-base-content/60">
+      <p className="m-0 mt-5 text-xs text-steel">
         None of these can move HBAR, LP tokens or bought tokens out of the engine. Ownership transfer is on the Debug
         Contracts page.
       </p>

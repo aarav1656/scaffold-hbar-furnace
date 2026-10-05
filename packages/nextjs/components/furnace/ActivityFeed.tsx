@@ -6,8 +6,8 @@ import { useNow } from "~~/hooks/furnace/useNow";
 import { ENGINE_ABI, SKIP_REASONS, SKIP_TEXT } from "~~/utils/furnace/constants";
 import { fmtAgo, fmtBps, fmtDuration, fmtUnits, fmtUsd, fmtUsdPrice, shortAddress } from "~~/utils/furnace/format";
 import { evmToEntityId, hashscan } from "~~/utils/furnace/hedera";
-import { sourceLabel } from "~~/utils/furnace/revenue";
 import type { EngineEvent } from "~~/utils/furnace/mirror";
+import { sourceLabel } from "~~/utils/furnace/revenue";
 
 type Args = Record<string, any>;
 
@@ -125,7 +125,7 @@ export function ActivityFeed({ snap }: { snap: Snapshot }) {
 
   return (
     <Panel id="activity-title" title="Activity" note="Decoded from the Hedera mirror node, refreshed every 15s">
-      {events.isLoading && <p className="m-0 mt-6 text-sm text-base-content/60">Reading the engine logs.</p>}
+      {events.isLoading && <p className="m-0 mt-6 text-sm text-steel">Reading the engine logs.</p>}
       {events.isError && (
         <p className="m-0 mt-6 text-sm text-error" role="alert">
           The mirror node did not answer.{" "}
@@ -135,7 +135,7 @@ export function ActivityFeed({ snap }: { snap: Snapshot }) {
         </p>
       )}
       {events.data && list.length === 0 && (
-        <p className="m-0 mt-6 text-sm text-base-content/70">
+        <p className="m-0 mt-6 text-sm text-slate">
           The engine has not logged anything yet. Its first event lands here the moment it is created.
         </p>
       )}
@@ -149,14 +149,14 @@ export function ActivityFeed({ snap }: { snap: Snapshot }) {
                 className="flex flex-col gap-1 py-3 sm:grid sm:grid-cols-[6rem_9.5rem_1fr_auto] sm:items-baseline sm:gap-x-4"
               >
                 <time
-                  className="font-mono text-xs tabular-nums text-base-content/60"
+                  className="font-mono text-xs tabular-nums text-steel"
                   dateTime={new Date(ev.at * 1000).toISOString()}
                   title={new Date(ev.at * 1000).toLocaleString()}
                 >
                   {now === null ? "" : fmtAgo(Math.max(0, now - ev.at))}
                 </time>
                 <span
-                  className={`font-mono text-xs ${failed ? "text-error" : ev.name === "Burned" ? "font-medium text-primary" : "text-base-content/70"}`}
+                  className={`font-mono text-xs ${failed ? "text-error" : ev.name === "Burned" ? "font-medium text-primary" : "text-slate"}`}
                 >
                   {LABELS[ev.name] ?? ev.name}
                 </span>

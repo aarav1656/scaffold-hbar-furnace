@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { fmtUnits } from "~~/utils/furnace/format";
 import type { SupplyPoint } from "~~/utils/furnace/supply";
 
-const MONO = "var(--font-plex-mono), ui-monospace, monospace";
+const MONO = "var(--font-jetbrains-mono), ui-monospace, monospace";
 
 /** Container width in pixels, tracked so the chart draws at its real size and its text never scales down. */
 function useWidth() {
@@ -29,8 +29,8 @@ function niceStep(raw: number) {
 const whole = (value: bigint, decimals: number) => Number(value) / 10 ** decimals;
 
 /**
- * Supply against time. The line holds its level between burns and drops straight down at each one; the ember
- * fill above it is the supply already burned away from the maximum.
+ * Supply against time. The line holds its level between burns and drops straight down at each one; the heat
+ * band above it, yellow at the maximum and ember at the deepest level, is the supply already burned away.
  */
 export function SupplyChart({
   points,
@@ -47,7 +47,7 @@ export function SupplyChart({
 }) {
   const [ref, width] = useWidth();
   const compact = width < 520;
-  const height = compact ? 240 : 300;
+  const height = compact ? 260 : 340;
 
   const supplies = points.map(p => whole(p.supply, decimals));
   const top = Math.max(whole(maxSupply, decimals), ...supplies);
@@ -111,27 +111,39 @@ export function SupplyChart({
           onPointerMove={e => nearest(e.clientX, e.currentTarget.getBoundingClientRect())}
           onPointerDown={e => nearest(e.clientX, e.currentTarget.getBoundingClientRect())}
         >
+          <defs>
+            <linearGradient
+              id="burned-heat"
+              gradientUnits="userSpaceOnUse"
+              x1="0"
+              x2="0"
+              y1={yMax}
+              y2={Math.max(y(min), yMax + 1)}
+            >
+              <stop offset="0%" stopColor="var(--burn-fill-top)" />
+              <stop offset="100%" stopColor="var(--burn-fill-bottom)" />
+            </linearGradient>
+          </defs>
           <rect
             x={left}
             y={yMax}
             width={plotW}
             height={Math.max(plotH - (yMax - topPad), 0)}
-            fill="var(--color-primary)"
-            opacity={0.16}
+            fill="url(#burned-heat)"
           />
           <path d={`${path} V${topPad + plotH} H${left} Z`} fill="var(--color-base-100)" stroke="none" />
           {ticks.map((v, i) => (
             <g key={v}>
-              <line x1={left} x2={left + plotW} y1={y(v)} y2={y(v)} stroke="var(--color-base-300)" strokeWidth={1} />
-              <text
-                x={left - 8}
-                y={y(v) + 4}
-                textAnchor="end"
-                fontSize={11}
-                fontFamily={MONO}
-                fill="var(--color-base-content)"
+              <line
+                x1={left}
+                x2={left + plotW}
+                y1={y(v)}
+                y2={y(v)}
+                stroke="var(--color-base-300)"
+                strokeWidth={1}
                 opacity={0.6}
-              >
+              />
+              <text x={left - 8} y={y(v) + 4} textAnchor="end" fontSize={11} fontFamily={MONO} fill="var(--text-steel)">
                 {labels[i]}
               </text>
             </g>
@@ -144,23 +156,14 @@ export function SupplyChart({
             stroke="var(--color-base-content)"
             strokeWidth={1}
             strokeDasharray="4 4"
-            opacity={0.5}
           />
-          <text
-            x={left + plotW}
-            y={yMax - 5}
-            textAnchor="end"
-            fontSize={11}
-            fontFamily={MONO}
-            fill="var(--color-base-content)"
-            opacity={0.7}
-          >
+          <text x={left + plotW} y={yMax - 5} textAnchor="end" fontSize={11} fontFamily={MONO} fill="var(--text-slate)">
             max supply
           </text>
           <path
             d={path}
             fill="none"
-            stroke="var(--color-primary)"
+            stroke="var(--color-base-content)"
             strokeWidth={2.5}
             strokeLinejoin="round"
             pathLength={1}
@@ -171,9 +174,9 @@ export function SupplyChart({
             x2={x(points[selected].t)}
             y1={topPad}
             y2={topPad + plotH}
-            stroke="var(--color-primary)"
+            stroke="var(--color-base-content)"
             strokeWidth={1}
-            opacity={0.35}
+            opacity={0.5}
           />
           {burnIdx.map(i => (
             <circle
@@ -182,11 +185,18 @@ export function SupplyChart({
               cy={y(supplies[i])}
               r={i === selected ? 5.5 : 3.5}
               fill={i === selected ? "var(--color-primary)" : "var(--color-base-100)"}
-              stroke="var(--color-primary)"
+              stroke="var(--color-base-content)"
               strokeWidth={2}
             />
           ))}
-          <circle cx={x(t1)} cy={yEnd} r={3} fill="var(--color-primary)" />
+          <circle
+            cx={x(t1)}
+            cy={yEnd}
+            r={4}
+            fill="var(--color-primary)"
+            stroke="var(--color-base-100)"
+            strokeWidth={2}
+          />
           {xTicks.map((t, i) => (
             <text
               key={i}
@@ -195,8 +205,7 @@ export function SupplyChart({
               textAnchor={i === 0 ? "start" : i === xTicks.length - 1 ? "end" : "middle"}
               fontSize={11}
               fontFamily={MONO}
-              fill="var(--color-base-content)"
-              opacity={0.6}
+              fill="var(--text-steel)"
             >
               {i === xTicks.length - 1 ? "now" : timeLabel(t)}
             </text>

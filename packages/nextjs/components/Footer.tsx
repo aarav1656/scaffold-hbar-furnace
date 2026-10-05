@@ -14,7 +14,8 @@ export const Footer = () => {
   const isTestnet = targetNetwork.id !== hedera.id;
 
   return (
-    <div className="min-h-0 py-5 px-1 mb-11 lg:mb-0">
+    <div className="mb-11 min-h-0 bg-base-200 px-1 pb-5 text-base-content lg:mb-0">
+      <div className="sunset-stripe mb-5" aria-hidden="true" />
       <div>
         <div className="fixed flex justify-between items-center w-full z-10 p-4 bottom-0 left-0 pointer-events-none">
           <div className="flex flex-col md:flex-row gap-2 pointer-events-auto">
@@ -25,12 +26,12 @@ export const Footer = () => {
       </div>
       <div className="w-full">
         <ul className="menu menu-horizontal w-full">
-          <div className="flex justify-center items-center gap-3 text-sm w-full text-base-content/60">
+          <div className="flex justify-center items-center gap-3 text-sm w-full text-steel">
             <a
               href={hashscan.contract(ENGINE_ADDRESS)}
               target="_blank"
               rel="noreferrer"
-              className="link hover:text-primary"
+              className="link hover:text-primary hover:underline"
             >
               Engine on HashScan
             </a>
@@ -41,13 +42,18 @@ export const Footer = () => {
                 href="https://hedera.com/"
                 target="_blank"
                 rel="noreferrer"
-                className="font-semibold link hover:text-primary"
+                className="font-semibold link hover:text-primary hover:underline"
               >
                 Hedera
               </a>
             </span>
             <span className="opacity-30">|</span>
-            <a href="https://docs.hedera.com/" target="_blank" rel="noreferrer" className="link hover:text-primary">
+            <a
+              href="https://docs.hedera.com/"
+              target="_blank"
+              rel="noreferrer"
+              className="link hover:text-primary hover:underline"
+            >
               Docs
             </a>
           </div>
