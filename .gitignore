@@ -29,3 +29,4 @@ dist
 
 # local proxy capture
 mitm_mcp_traffic.db
+docs/demo/build/
