@@ -1,6 +1,6 @@
 # Hedera behaviours the engine is built around
 
-`FurnaceEngine` depends on eighteen behaviours of the Hedera network that an Ethereum developer does not expect. Each entry gives what happens, where the contract handles it, a command that reproduces it against live testnet.
+`FurnaceEngine` depends on eighteen behaviours of the Hedera network that an Ethereum developer does not expect. Each entry gives what happens, where the contract handles it, and a command that reproduces it against live testnet.
 
 Setup for the commands (run them in `bash`; they need Foundry, `curl`, `jq` and `python3`):
 
@@ -184,6 +184,8 @@ cast call $FURN "approve(address,uint256)(bool)" $ROUTER 100000000000000 --from 
 cast call $FURN "approve(address,uint256)(bool)" $ROUTER 100000000000001 --from $OWNER --rpc-url $RPC   # reverts AMOUNT_EXCEEDS_TOKEN_MAX_SUPPLY
 ```
 
+**Source.** Measured on Hedera testnet; the command above reproduces it.
+
 ## HTS caps a burn at the treasury balance
 
 **What happens.** `burnToken` burns from the treasury. A burn larger than the treasury balance reverts with INSUFFICIENT_TOKEN_BALANCE. The treasury here is the engine, which also holds the unclaimed team allocation and the unseeded liquidity allocation, so the network alone would let a careless burn eat them.
@@ -221,6 +223,8 @@ curl -s "$M/transactions?timestamp=1791020653.144458104" | jq -c '.transactions[
 
 Unit tests: `test_runScheduled_onlyTheEngineItselfMayCallIt`, `test_buyback_isOwnerOrSelfOnly`. Mutation 7 deletes the access check.
 
+**Source.** Measured on Hedera testnet; the command above reproduces it.
+
 ## 3,000,000 gas is the floor for a self-rescheduling call
 
 **What happens.** `scheduleCall` alone costs about 1.4M gas. Booked with too little gas, the scheduled function runs, its inner `scheduleCall` runs out of gas, and the outer call still reports SUCCESS. The chain ends and nothing says so.
@@ -238,6 +242,8 @@ curl -s "$M/transactions?timestamp=1791020653.144458104" | jq '.transactions[0].
 
 Unit test: `test_constructor_rejectsBadConfig` covers the floor.
 
+**Source.** Measured on Hedera testnet; the command above reproduces it.
+
 ## One schedule per scheduled execution
 
 **What happens.** A scheduled execution may book exactly one schedule. A second `scheduleCall` in the same execution fails with `NO_SCHEDULING_ALLOWED_AFTER_SCHEDULED_RECURSION` and fails the whole transaction.
@@ -254,6 +260,8 @@ curl -s "$M/contracts/$EID/results/logs?order=asc&timestamp=1791020653.144458104
 ```
 
 Unit tests: `test_runScheduled_booksItsSuccessorBeforeItBuysAndBurns`, `test_runScheduled_chainsAndStaysInsideTheDailyBudget`, `test_runScheduled_aLostBookingTurnsAutomationOffButStillBuys`.
+
+**Source.** Measured on Hedera testnet; the command above reproduces it.
 
 ## Expiry is refused beyond 62 days
 
@@ -277,6 +285,8 @@ cast call $HSS "hasScheduleCapacity(uint256,uint256)(bool)" $((NOW - 10)) 400000
 
 Unit test: `test_start_enforcesTheIntervalBounds`.
 
+**Source.** Measured on Hedera testnet; the command above reproduces it.
+
 ## A busy second refuses new schedules
 
 **What happens.** Each consensus second holds a bounded amount of scheduled gas. A booking for a full second fails with `SCHEDULE_EXPIRY_IS_BUSY`. [HIP-1215](https://github.com/hiero-ledger/hiero-improvement-proposals/blob/main/HIP/hip-1215.md) adds `hasScheduleCapacity(expirySecond, gasLimit)` so a contract can ask first.
@@ -294,7 +304,7 @@ cast call $HSS "hasScheduleCapacity(uint256,uint256)(bool)" $((NOW + INT)) $GAS 
 
 Unit tests with a mock Schedule Service that marks seconds busy: `test_start_probesLaterSecondsWhenTheIdealOneIsBusy`, `test_start_givesUpWhenEveryProbedSecondIsBusy`.
 
-**Source.** HIP-1215.
+**Source.** Measured on Hedera testnet; the command above reproduces it.
 
 ## The payer needs the full gas reservation, not the gas a run burns
 
@@ -326,6 +336,8 @@ done
 # 141794436, 140106407, 140106407
 ```
 
+**Source.** Measured on Hedera testnet; the command above reproduces it.
+
 ## A balance read inside a scheduled run is short by the unreturned allowance
 
 **What happens.** During a scheduled call the account has already been debited the whole gas allowance; the refund of unused gas lands when the call returns. A contract that reads its own balance mid-run sees it short by the unreturned part. A testnet run recorded 0.73 HBAR seen against 2.2245 HBAR after settlement.
@@ -339,6 +351,8 @@ python3 -c "print(2631578947*500//9500)"      # 138504155, the spend in the Burn
 ```
 
 Unit tests: `test_funds_spendIsAllRevenueAboveTheFuelReserve`, `test_funds_nothingAboveTheReserveSkipsTheRun`, `invariant_theFuelReserveIsNeverSpent`.
+
+**Source.** Measured on Hedera testnet; the command above reproduces it.
 
 ## Scheduled executions live under /transactions, not /contracts/{id}/results
 
